@@ -24,11 +24,14 @@ async function main() {
     },
     value: locklift.utils.toNano(1),
   });
+/*
 
   const response = await locklift.tracing.trace(game
       .methods
       .generateBoard({
-        _seed: "31071986"
+        _seed: "31071986",
+          maxSnakes: 3,
+          maxLadders: 3
       })
       .send({
         from: deployer,
@@ -37,19 +40,23 @@ async function main() {
       }), {raise: true}
   )
 
-    expect(response.traceTree).not.to.have.error();
+  expect(response.traceTree).not.to.have.error();
   response.traceTree?.beautyPrint();
+*/
 
-  await locklift
-      .giver
-      .sendTo (
-          new Address("0:2d67f5cdd25d5aebcb690f2b378fffa600cadb2c581e71e6e386b18e08d84a94"),
-          locklift.utils.toNano(1000)
-        );
+  const walletBalance = +(await locklift.provider.getBalance(new Address("0:2746d46337aa25d790c97f1aefb01a5de48cc1315b41a4f32753146a1e1aeb7d")));
+  if(walletBalance < 1000) {
+      await locklift
+          .giver
+          .sendTo(
+              new Address("0:2746d46337aa25d790c97f1aefb01a5de48cc1315b41a4f32753146a1e1aeb7d"),
+              locklift.utils.toNano(1000 - walletBalance)
+          );
+  }
 
   await locklift.tracing.trace(game
       .methods
-      .transferOwnership({"newOwner": new Address("0:2d67f5cdd25d5aebcb690f2b378fffa600cadb2c581e71e6e386b18e08d84a94")})
+      .transferOwnership({"newOwner": new Address("0:2746d46337aa25d790c97f1aefb01a5de48cc1315b41a4f32753146a1e1aeb7d")})
       .send({
         from: deployer,
         amount: locklift.utils.toNano(0.3),

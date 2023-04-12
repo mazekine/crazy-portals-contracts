@@ -1,7 +1,7 @@
 {
 	"ABI version": 2,
 	"version": "2.2",
-	"header": ["pubkey", "time"],
+	"header": ["time"],
 	"functions": [
 		{
 			"name": "constructor",
@@ -15,24 +15,9 @@
 		{
 			"name": "generateBoard",
 			"inputs": [
-				{"name":"_seed","type":"uint256"}
-			],
-			"outputs": [
-			]
-		},
-		{
-			"name": "getSnake",
-			"inputs": [
-				{"name":"answerId","type":"uint32"}
-			],
-			"outputs": [
-				{"components":[{"components":[{"name":"x","type":"uint8"},{"name":"y","type":"uint8"}],"name":"from","type":"tuple"},{"components":[{"name":"x","type":"uint8"},{"name":"y","type":"uint8"}],"name":"to","type":"tuple"},{"name":"type_","type":"uint8"}],"name":"value0","type":"tuple"}
-			]
-		},
-		{
-			"name": "onSnakeReceived",
-			"inputs": [
-				{"components":[{"components":[{"name":"x","type":"uint8"},{"name":"y","type":"uint8"}],"name":"from","type":"tuple"},{"components":[{"name":"x","type":"uint8"},{"name":"y","type":"uint8"}],"name":"to","type":"tuple"},{"name":"type_","type":"uint8"}],"name":"snake","type":"tuple"}
+				{"name":"_seed","type":"uint256"},
+				{"name":"_maxSnakes","type":"uint8"},
+				{"name":"_maxLadders","type":"uint8"}
 			],
 			"outputs": [
 			]
@@ -61,10 +46,8 @@
 		{
 			"name": "createRound",
 			"inputs": [
-				{"name":"answerId","type":"uint32"}
 			],
 			"outputs": [
-				{"components":[{"name":"id","type":"uint64"},{"name":"validUntil","type":"uint64"},{"name":"status","type":"uint8"},{"name":"maxPlayers","type":"uint8"},{"name":"entryStake","type":"uint128"},{"name":"prizeFund","type":"uint128"},{"name":"prizeClaimed","type":"bool"},{"name":"winner","type":"address"}],"name":"round","type":"tuple"}
 			]
 		},
 		{
@@ -177,11 +160,19 @@
 			]
 		},
 		{
-			"name": "maxRoundTimeMs",
+			"name": "maxRoundDurationMs",
 			"inputs": [
 			],
 			"outputs": [
-				{"name":"maxRoundTimeMs","type":"uint64"}
+				{"name":"maxRoundDurationMs","type":"uint64"}
+			]
+		},
+		{
+			"name": "maxMoveDurationMs",
+			"inputs": [
+			],
+			"outputs": [
+				{"name":"maxMoveDurationMs","type":"uint64"}
 			]
 		},
 		{
@@ -222,6 +213,22 @@
 			],
 			"outputs": [
 				{"name":"entryStake","type":"uint128"}
+			]
+		},
+		{
+			"name": "maxSnakes",
+			"inputs": [
+			],
+			"outputs": [
+				{"name":"maxSnakes","type":"uint8"}
+			]
+		},
+		{
+			"name": "maxLadders",
+			"inputs": [
+			],
+			"outputs": [
+				{"name":"maxLadders","type":"uint8"}
 			]
 		}
 	],
@@ -343,12 +350,12 @@
 		{"name":"_constructorFlag","type":"bool"},
 		{"name":"_owner","type":"address"},
 		{"name":"_initialized","type":"bool"},
-		{"name":"MAX_SNAKES","type":"map(uint8,uint8)"},
-		{"name":"MAX_LADDERS","type":"map(uint8,uint8)"},
-		{"name":"MAX_ROUND_TIME_MS_DEFAULT","type":"uint64"},
+		{"name":"MAX_ROUND_DURATION_MS_DEFAULT","type":"uint64"},
+		{"name":"MOVE_DURATION_MS_DEFAULT","type":"uint64"},
 		{"components":[{"name":"id","type":"uint64"},{"name":"validUntil","type":"uint64"},{"name":"status","type":"uint8"},{"name":"maxPlayers","type":"uint8"},{"name":"entryStake","type":"uint128"},{"name":"prizeFund","type":"uint128"},{"name":"prizeClaimed","type":"bool"},{"name":"winner","type":"address"}],"name":"rounds","type":"map(uint64,tuple)"},
 		{"name":"maxPlayers","type":"uint8"},
-		{"name":"maxRoundTimeMs","type":"uint64"},
+		{"name":"maxRoundDurationMs","type":"uint64"},
+		{"name":"maxMoveDurationMs","type":"uint64"},
 		{"components":[{"name":"columns","type":"uint8"},{"name":"rows","type":"uint8"}],"name":"board","type":"tuple"},
 		{"components":[{"components":[{"name":"x","type":"uint8"},{"name":"y","type":"uint8"}],"name":"from","type":"tuple"},{"components":[{"name":"x","type":"uint8"},{"name":"y","type":"uint8"}],"name":"to","type":"tuple"},{"name":"type_","type":"uint8"}],"name":"snakes","type":"tuple[]"},
 		{"components":[{"components":[{"name":"x","type":"uint8"},{"name":"y","type":"uint8"}],"name":"from","type":"tuple"},{"components":[{"name":"x","type":"uint8"},{"name":"y","type":"uint8"}],"name":"to","type":"tuple"},{"name":"type_","type":"uint8"}],"name":"ladders","type":"tuple[]"},
@@ -356,8 +363,11 @@
 		{"name":"seed","type":"uint256"},
 		{"name":"prizeFundPerRound","type":"uint128"},
 		{"name":"entryStake","type":"uint128"},
-		{"name":"mapPlayerRound","type":"map(address,uint64)"},
-		{"name":"mapRoundPlayers","type":"map(uint64,address[])"},
+		{"name":"maxSnakes","type":"uint8"},
+		{"name":"maxLadders","type":"uint8"},
+		{"name":"playerRound","type":"map(address,uint64)"},
+		{"name":"roundPlayers","type":"map(uint64,address[])"},
+		{"components":[{"name":"expiresAt","type":"uint64"},{"name":"playersMoved","type":"address[]"}],"name":"roundMoves","type":"map(uint64,tuple)"},
 		{"name":"playerCell","type":"map(address,uint8)"},
 		{"components":[{"components":[{"name":"x","type":"uint8"},{"name":"y","type":"uint8"}],"name":"from","type":"tuple"},{"components":[{"name":"x","type":"uint8"},{"name":"y","type":"uint8"}],"name":"to","type":"tuple"},{"name":"type_","type":"uint8"}],"name":"cells","type":"map(uint8,optional(tuple))"}
 	]

@@ -37,6 +37,11 @@ interface IGame {
         uint8 rows;
     }
 
+    struct Move {
+        uint64    expiresAt;
+        address[] playersMoved;
+    }
+
     event DiceRolled(address player, uint8 dice, Coordinate from, Coordinate to);
     event PathFound(address player, Path path);
     event BoardGenerated(Board board, Path[] snakes, Path[] ladders);
@@ -50,12 +55,12 @@ interface IGame {
     event RoundJoined(address board, Round round, address player);
     event PrizeClaimed(address board, Round rouns, address player);
 
-    function generateBoard(uint seed) external;
+    function generateBoard(uint seed, uint8 maxSnakes, uint8 maxLadders) external;
     function getBoard() external view responsible returns (Board board, Path[] snakes, Path[] ladders);
     function roll() external responsible returns (uint8 dice, Coordinate newPosition);
     function claim(uint64 roundId) external;
 
-    function createRound() external responsible returns (Round round);
+    function createRound() external /*responsible returns (Round round)*/;
     function getRound(uint64 roundId) external view responsible returns (optional(Round) round);
     function getRounds() external view responsible returns (Round[] rounds);
     function joinRound(uint64 roundId) external responsible returns (bool result);
@@ -64,9 +69,4 @@ interface IGame {
     function setMaxRoundTimeMs(uint64 ms) external;
     function setPrizeFund(uint128 amount) external;
     function setEntryStake(uint128 amount) external;
-
-    function getSnake() external view responsible returns (Path);
-    //function getLadder() external view responsible returns (Path);
-    function onSnakeReceived(Path snake) external;
-    //function onLadderReceived(Path ladder) external;
 }
