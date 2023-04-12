@@ -1,0 +1,58 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
+pragma ever-solidity >= 0.62.0;
+
+import "./BaseErrorCodes.tsol";
+
+library Utils {
+
+    uint128 constant CONTRACT_MIN_BALANCE = 0.1 ever;
+
+    /// Looks for a value corresponding to the selected key, if any
+    /// @param  keys    Array of keys
+    /// @param  values  Array of values
+    /// @param  key     The key to look for
+    /// @return Corresponding value, if the key is found, or empty string otherwise
+    function vLookup(string[] keys, string[] values, string key) internal returns (string) {
+        require(keys.length == values.length, BaseErrorCodes.PARAMETER_COUNT_MISMATCH);
+
+        if (key == "") return "";
+
+        for (uint i; i < keys.length; i++) {
+            if (key == keys[i]) {
+                return values[i];
+            }
+        }
+
+        return "";
+    }
+
+    function mergeStringArray(string[] input, string delimiter) internal returns (string) {
+        string result = "";
+        for(uint i; i < input.length; i++) {
+
+            if(i == 0) {
+                result = input[0];
+            } else {
+                result += delimiter + input[i];
+            }
+        }
+
+        return result;
+    }
+
+    function _reserve() internal virtual returns (uint128) {
+        return math.max(address(this).balance - msg.value, CONTRACT_MIN_BALANCE);
+    }
+
+/*
+    function _reserve(uint128 minBalance) internal virtual returns (uint128) {
+        return math.max(address(this).balance - msg.value, minBalance);
+    }
+*/
+
+    struct UniversalMeta {
+        uint64  callId;
+        address returnGasTo;
+    }
+}

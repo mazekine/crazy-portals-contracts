@@ -1,0 +1,401 @@
+// SPDX-License-Identifier: UNLICENSED
+pragma ever-solidity >= 0.62.0;
+pragma AbiHeader pubkey;
+
+import "./interfaces/IGame.tsol";
+import "./abstracts/Ownable.tsol";
+import "./abstracts/Cashback.tsol";
+import "./libraries/Gas.tsol";
+
+contract Game is IGame, Ownable, Cashback {
+    mapping(uint8 => uint8) private MAX_SNAKES;
+    mapping(uint8 => uint8) private MAX_LADDERS;
+    uint64  private MAX_ROUND_TIME_MS_DEFAULT = 30 * 60 * 1000; //  30 minutes
+
+    mapping(uint64 => Round) public rounds;
+    uint8   public maxPlayers;
+    uint64  public maxRoundTimeMs = MAX_ROUND_TIME_MS_DEFAULT;
+    Board   public board;
+    Path[]  snakes;
+    Path[]  ladders;
+    bool    public boardInitialized;
+    uint    public seed;
+    uint128 public prizeFundPerRound;
+    uint128 public entryStake;
+
+    mapping(address => uint64) mapPlayerRound;
+    mapping(uint64 => address[]) mapRoundPlayers;
+    mapping(address => uint8) playerCell;
+    mapping(uint8 => optional(Path)) cells;
+
+    constructor(address owner, uint8 size) public {
+        require(size == 8 || size == 10 || size == 12, BaseErrorCodes.NOT_ALLOWED);
+
+        tvm.accept();
+
+        board = Board(size, size);
+
+        MAX_SNAKES[8] = 6;
+        MAX_SNAKES[10] = 8;
+        MAX_SNAKES[12] = 10;
+
+        MAX_LADDERS[8] = 6;
+        MAX_LADDERS[10] = 8;
+        MAX_LADDERS[12] = 10;
+
+        _initOwnable(owner);
+    }
+
+    function generateBoard(uint _seed)
+        external
+        override
+        onlyOwner
+        reservable
+        cashback
+    {
+        require(!boardInitialized, BaseErrorCodes.ITEM_EXISTS);
+
+        uint8 minCell = board.columns + 1;
+        uint8 maxCell = board.rows * board.columns - 1;
+
+        uint8 maxSnakes = MAX_SNAKES[board.rows];
+        uint8 maxLadders = MAX_LADDERS[board.rows];
+
+        seed = _seed;
+        rnd.setSeed(seed);
+        //rnd.shuffle(seed);
+
+        //snakes.push(Path(Coordinate(2,2), Coordinate(1,1), PathType.Snake));
+        for(uint8 i = 0; i < maxSnakes; i++) {
+            IGame(address(this)).getSnake{ value: 0.2 ever, bounce: true, callback: onSnakeReceived }();
+        }
+
+/*
+        bool flag;
+*/
+
+/*
+        for(uint8 i = 0; i < maxSnakes; i++) {
+
+            Coordinate head;
+            Coordinate tail;
+
+            uint8 headCursor = minCell + rnd.next(maxCell - minCell);
+            while(cells.exists(headCursor)) {
+                headCursor = minCell + rnd.next(maxCell - minCell);
+            }
+
+            (head.y, head.x) = math.divmod(headCursor, board.columns);
+            bool rtl = (head.y % 2 == 0);
+            if (rtl) head.x = board.columns - head.x;
+
+            uint8 tailCursor = 1 + rnd.next(headCursor - 2);
+            (tail.y, tail.x) = math.divmod(tailCursor, board.columns);
+            rtl = (tail.y % 2 == 0);
+            if (rtl) tail.x = board.columns - head.x;
+
+            Path snake = Path(head, tail, PathType.Snake);
+            cells[headCursor] = snake;
+            cells[tailCursor] = snake;
+        }
+*/
+/*
+
+        while(!flag) {
+                head.x = rnd.next(board.columns) + 1;
+                head.y = rnd.next(board.rows - 1) + 2;  //  Head cannot happen on the first row
+
+                flag = !(head.y == board.rows && head.x == 1);
+                for(Path snake : snakes) {
+                    if(snake.from.x == head.x && snake.from.y == head.y) {
+                        flag = false;
+                        break;
+                    }
+                }
+            }
+
+            flag = false;
+            while(!flag) {
+                tail.x = rnd.next(board.columns) + 1;
+                tail.y = rnd.next(head.y - 1) + 2;
+
+                for(Path snake : snakes) {
+                    if(snake.from.x == tail.x && snake.from.y == tail.y) {
+                        flag = false;
+                        break;
+                    }
+                }
+            }
+
+            snakes.push(Path(head, tail, PathType.Snake));
+        }
+
+        for(uint8 i = 0; i < maxLadders; i++) {
+            head.x = rnd.next(board.columns) + 1;
+            head.y = rnd.next(board.rows - 1) + 2;  //  Head cannot happen on the first row
+
+            tail.x = rnd.next(board.columns) + 1;
+            tail.y = rnd.next(head.y - 1) + 2;
+
+            ladders.push(Path(tail, head, PathType.Ladder));
+        }
+*/
+
+        //emit BoardGenerated(board, snakes, ladders);
+
+        //return {value: 0, flag: MsgFlag.ALL_NOT_RESERVED, bounce: false} (board, snakes, ladders);
+    }
+
+    function getSnake() public view responsible reservable override returns (Path) {
+        Coordinate head;
+        Coordinate tail;
+
+        rnd.shuffle();
+
+        bool flag;
+        while(!flag) {
+            head.x = rnd.next(board.columns) + 1;
+            head.y = rnd.next(board.rows - 1) + 2;  //  Head cannot happen on the first row
+
+            flag = !(head.y == board.rows && head.x == 1);
+            for(Path snake : snakes) {
+                if(snake.from.x == head.x && snake.from.y == head.y) {
+                    flag = false;
+                    break;
+                }
+            }
+        }
+
+        flag = false;
+        while(!flag) {
+            tail.x = rnd.next(board.columns) + 1;
+            tail.y = rnd.next(head.y - 1) + 2;
+            flag = true;
+
+            for(Path snake : snakes) {
+                if(snake.from.x == tail.x && snake.from.y == tail.y) {
+                    flag = false;
+                    break;
+                }
+            }
+        }
+
+        return {value: 0, flag: MsgFlag.ALL_NOT_RESERVED, bounce: false} Path(head, tail, PathType.Snake);
+    }
+
+    function onSnakeReceived(Path snake) public override {
+        //require(msg.sender == address(this), BaseErrorCodes.NOT_ALLOWED);
+        require(snakes.length < MAX_SNAKES[board.rows], BaseErrorCodes.NOT_ALLOWED);
+
+        snakes.push(snake);
+        tvm.commit();
+    }
+
+    function getBoard()
+        external
+        view
+        responsible
+        override
+    returns (Board _board, Path[] _snakes, Path[] _ladders) {
+        return {value: 0, flag: MsgFlag.ALL_NOT_RESERVED, bounce: false} (board, snakes, ladders);
+    }
+
+    function roll()
+        external
+        responsible
+        override
+        reservable
+        cashback
+    returns (uint8 dice, Coordinate newPosition) {
+        address player = msg.sender;
+        require(mapPlayerRound.exists(player), BaseErrorCodes.NOT_ALLOWED);
+        require(playerCell.exists(player), BaseErrorCodes.ITEM_NOT_FOUND);
+
+        uint64 roundId = mapPlayerRound[player];
+        if(!rounds.exists(roundId)) {
+            delete mapPlayerRound[player];
+            revert(BaseErrorCodes.ITEM_NOT_FOUND);
+        }
+
+        Round round = rounds[roundId];
+        require(round.status != RoundStatus.Finished, BaseErrorCodes.NOT_ALLOWED);
+        if(round.validUntil <= now) {
+            rounds[roundId].status = RoundStatus.Expired;
+            revert(BaseErrorCodes.TOO_LATE);
+        }
+
+        if(round.status == RoundStatus.NotStarted) {
+            require(address(this).balance > (Gas.CONTRACT_MIN_BALANCE + round.prizeFund), BaseErrorCodes.NOT_ENOUGH_BALANCE);
+            require(mapRoundPlayers.values().length == round.maxPlayers, BaseErrorCodes.NOT_ALLOWED);
+
+            round.status = RoundStatus.Active;
+        }
+
+        rnd.shuffle(seed);
+        uint8 diceVal = rnd.next(6) + 1;
+
+        uint8   curCell = playerCell[player];
+        uint8   newCell = curCell + diceVal;
+        uint8   boardOverflow = board.columns * board.rows - newCell;
+
+        if(boardOverflow < 0) {
+            newCell = board.columns * board.rows - boardOverflow;
+        } else if (boardOverflow == 0) {
+            //  Player has won
+            rounds[roundId].status = RoundStatus.Finished;
+            rounds[roundId].winner = player;
+        }
+
+        (uint8 y, uint8 x) = math.divmod(newCell, board.columns);
+
+        bool rtl = (y % 2 == 0);
+        if (rtl) {
+            x = board.columns - x;
+        }
+
+        bool flag;
+        while(!flag) {
+            (uint8 _x, uint8 _y) = _checkContinuation(player, x, y);
+            if(_x == x && _y == y) {
+                flag = true;
+            } else {
+                x = _x;
+                y = _y;
+            }
+        }
+
+        return {value: 0, flag: MsgFlag.ALL_NOT_RESERVED, bounce: false} (diceVal, Coordinate(x, y));
+    }
+
+    function createRound()
+        external
+        responsible
+        override
+        reservable
+        cashback
+    returns (Round round) {
+        uint64 roundId = now;
+        require(!rounds.exists(roundId), BaseErrorCodes.ITEM_EXISTS);
+
+        Round newRound = Round(
+            roundId,
+            roundId + maxRoundTimeMs,
+            RoundStatus.NotStarted,
+            maxPlayers,
+            entryStake,
+            prizeFundPerRound,
+            false,
+            address(0)
+        );
+
+        rounds[roundId] = newRound;
+
+        return {value: 0, flag: MsgFlag.ALL_NOT_RESERVED, bounce: false} newRound;
+    }
+
+    function getRound(uint64 roundId) external view responsible override returns (optional(Round) round) {
+        return {value: 0, flag: MsgFlag.ALL_NOT_RESERVED, bounce: false} rounds.fetch(roundId);
+    }
+
+    function getRounds() external view responsible override returns (Round[] _rounds) {
+        return {value: 0, flag: MsgFlag.ALL_NOT_RESERVED, bounce: false} rounds.values();
+    }
+
+    function setMaxPlayers(uint8 qty) external override onlyOwner reservable cashback {
+        uint8 oldVal = maxPlayers;
+        maxPlayers = qty;
+
+        emit MaxPlayersUpdated(address(this), oldVal, maxPlayers);
+    }
+
+    function setMaxRoundTimeMs(uint64 ms) external override onlyOwner reservable cashback {
+        uint64 oldVal = maxRoundTimeMs;
+        maxRoundTimeMs = ms;
+
+        emit MaxRoundTimeMsUpdated(address(this), oldVal, maxRoundTimeMs);
+    }
+
+    function setPrizeFund(uint128 amount) external override onlyOwner reservable cashback {
+        uint128 oldVal = prizeFundPerRound;
+        prizeFundPerRound = amount;
+
+        emit PrizeFundUpdated(address(this), oldVal, prizeFundPerRound);
+    }
+
+    function setEntryStake(uint128 amount) external override onlyOwner reservable cashback {
+        uint128 oldVal = entryStake;
+        entryStake = amount;
+
+        emit EntryStakeUpdated(address(this), oldVal, entryStake);
+    }
+
+    function joinRound(uint64 roundId)
+        external
+        responsible
+        override
+        reservable
+        cashback
+    returns (bool result) {
+        require(rounds.exists(roundId), BaseErrorCodes.ITEM_NOT_FOUND);
+
+        address player = msg.sender;
+        for(address _player : mapRoundPlayers[roundId]) {
+            require(_player != player, BaseErrorCodes.NOTHING_CHANGED);
+        }
+
+        if(mapPlayerRound.exists(player)) {
+            require(mapPlayerRound[player] != roundId, BaseErrorCodes.NOTHING_CHANGED);
+            uint64 oldRound = mapPlayerRound[player];
+
+            require(rounds[oldRound].status == RoundStatus.Finished || rounds[oldRound].status == RoundStatus.Expired, BaseErrorCodes.NOT_ALLOWED);
+        }
+
+        mapPlayerRound[player] = roundId;
+        mapRoundPlayers[roundId].push(player);
+
+        emit RoundJoined(address(this), rounds[roundId], player);
+
+        return {value: 0, flag: MsgFlag.ALL_NOT_RESERVED, bounce: false} true;
+    }
+
+    function claim(uint64 roundId) external override reservable cashback {
+        require(rounds.exists(roundId), BaseErrorCodes.ITEM_NOT_FOUND);
+        Round round = rounds[roundId];
+
+        require(round.status == RoundStatus.Finished, BaseErrorCodes.NOT_ALLOWED);
+        require(round.winner == msg.sender, BaseErrorCodes.NOT_ALLOWED);
+        require(address(this).balance > (Gas.CONTRACT_MIN_BALANCE + round.prizeFund), BaseErrorCodes.NOT_ENOUGH_BALANCE);
+        require(!round.prizeClaimed, BaseErrorCodes.NOT_ALLOWED);
+
+        msg.sender.transfer({value: round.prizeFund, bounce: false});
+        rounds[roundId].prizeClaimed = true;
+
+        emit PrizeClaimed(address(this), round, msg.sender);
+    }
+
+    function _checkContinuation(address player, uint8 x, uint8 y) internal view returns (uint8 _x, uint8 _y) {
+        _x = x;
+        _y = y;
+
+        for(Path snake : snakes) {
+            if(snake.from.x == x && snake.from.y == y) {
+                _x = snake.to.x;
+                _y = snake.to.y;
+
+                emit PathFound(player, snake);
+            }
+        }
+
+        for(Path ladder : ladders) {
+            if(ladder.from.x == x && ladder.from.y == y) {
+                _x = ladder.to.x;
+                _y = ladder.to.y;
+
+                emit PathFound(player, ladder);
+            }
+        }
+
+        return (_x, _y);
+    }
+
+}

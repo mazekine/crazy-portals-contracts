@@ -1,0 +1,67 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
+pragma ever-solidity >= 0.62.0;
+
+library BaseErrorCodes {
+    //  Ownership errors
+    uint16 constant NOT_OWNER                                       = 1000;
+    uint16 constant ZERO_ADDRESS                                    = 1001;
+    uint16 constant PARENT_CONTRACT_IMPERSONATION                   = 1002;
+    uint16 constant PARENT_NOT_CONFIRMED                            = 1003;
+    uint16 constant ALREADY_PARENT                                  = 1004;
+    uint16 constant TOO_MANY_PARENTS                                = 1005;
+    uint16 constant NOT_A_PARENT                                    = 1006;
+    uint16 constant SELF_OWNERSHIP                                  = 1007;
+    uint16 constant SELF_PARENT                                     = 1008;
+    uint16 constant WRONG_AMOUNT                                    = 1050;
+    uint16 constant NOT_ENOUGH_BALANCE                              = 1060;
+
+    //  Gas errors
+    uint16 constant LOW_GAS_VALUE                                   = 2000;
+
+    //  Parameter validation errors
+    uint16 constant PARAMETER_COUNT_MISMATCH                        = 3000;
+    uint16 constant NON_EMPTY_VALUE_REQUIRED                        = 3001;
+    uint16 constant NON_EMPTY_KEY_REQUIRED                          = 3002;
+    uint16 constant NON_UNIQUE_KEYS                                 = 3003;
+    uint16 constant NON_EMPTY_LIST_REQUIRED                         = 3004;
+    uint16 constant ITEM_EXISTS                                     = 3005;
+    uint16 constant ITEM_NOT_FOUND                                  = 3006;
+    uint16 constant OBSCURE_BEHAVIOR                                = 3007;
+    uint16 constant NOTHING_CHANGED                                 = 3008;
+    uint16 constant VALUE_TOO_BIG                                   = 3009;
+    uint16 constant POSITIVE_VALUE_REQUIRED                         = 3010;
+    uint16 constant NON_DIVISIBLE                                   = 3011;
+    uint16 constant ITEM_ALREADY_IN_QUEUE                           = 3012;
+    uint16 constant SEQUENCE_FINISHED                               = 3013;
+    uint16 constant NOT_CONFIGURED                                  = 3014;
+    uint16 constant WRONG_CONFIGURATION                             = 3015;
+
+    //  Access errors
+    uint16 constant ROLE_DOESNT_EXIST                               = 4000;
+    uint16 constant NOT_ALLOWED                                     = 4001;
+    uint16 constant ROLE_ALREADY_EXISTS                             = 4002;
+    uint16 constant SUSPENDED                                       = 4003;
+    uint16 constant NOT_SUSPENDED                                   = 4004;
+
+    //  Time errors
+    uint16 constant TIMESTAMP_IN_PAST                               = 5000;
+    uint16 constant TOO_EARLY                                       = 5001;
+    uint16 constant REWRITING_HISTORY                               = 5002;
+    uint16 constant PERIOD_INTERSECTION                             = 5003;
+    uint16 constant TOO_LATE                                        = 5004;
+
+    //  Filters
+    uint16 constant UNSUPPORTED_FIELD_TYPE                          = 6000;
+    uint16 constant UNSUPPORTED_COMPARISON_TYPE                     = 6001;
+
+    //  State machine errors
+    uint16 constant WRONG_STATE                                     = 7000;
+
+    //  Payment errors
+    uint16 constant TOKEN_PAYMENT_EXPECTED                          = 8000;
+    uint16 constant COIN_PAYMENT_EXPECTED                           = 8001;
+
+    //  Upgrade errors
+    uint16 constant NEWER_VERSION_DEPLOYED                          = 9000;
+}

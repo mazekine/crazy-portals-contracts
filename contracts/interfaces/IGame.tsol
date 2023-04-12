@@ -1,0 +1,72 @@
+// SPDX-License-Identifier: UNLICENSED
+pragma ever-solidity >= 0.62.0;
+
+interface IGame {
+    struct Coordinate {
+        uint8 x;
+        uint8 y;
+    }
+
+    enum PathType {
+        Snake, Ladder
+    }
+
+    struct Path {
+        Coordinate from;
+        Coordinate to;
+        PathType   type_;
+    }
+
+    enum RoundStatus {
+        NotStarted, Active, Finished, Expired
+    }
+
+    struct Round {
+        uint64      id;
+        uint64      validUntil;
+        RoundStatus status;
+        uint8       maxPlayers;
+        uint128     entryStake;
+        uint128     prizeFund;
+        bool        prizeClaimed;
+        address     winner;
+    }
+
+    struct Board {
+        uint8 columns;
+        uint8 rows;
+    }
+
+    event DiceRolled(address player, uint8 dice, Coordinate from, Coordinate to);
+    event PathFound(address player, Path path);
+    event BoardGenerated(Board board, Path[] snakes, Path[] ladders);
+
+    event EntryStakeUpdated(address board, uint128 oldValue, uint128 newValue);
+    event PrizeFundUpdated(address board, uint128 oldValue, uint128 newValue);
+    event MaxRoundTimeMsUpdated(address board, uint64 oldValue, uint64 newValue);
+    event MaxPlayersUpdated(address board, uint8 oldValue, uint8 newValue);
+
+    event RoundCreated(address board, Round round);
+    event RoundJoined(address board, Round round, address player);
+    event PrizeClaimed(address board, Round rouns, address player);
+
+    function generateBoard(uint seed) external;
+    function getBoard() external view responsible returns (Board board, Path[] snakes, Path[] ladders);
+    function roll() external responsible returns (uint8 dice, Coordinate newPosition);
+    function claim(uint64 roundId) external;
+
+    function createRound() external responsible returns (Round round);
+    function getRound(uint64 roundId) external view responsible returns (optional(Round) round);
+    function getRounds() external view responsible returns (Round[] rounds);
+    function joinRound(uint64 roundId) external responsible returns (bool result);
+
+    function setMaxPlayers(uint8 qty) external;
+    function setMaxRoundTimeMs(uint64 ms) external;
+    function setPrizeFund(uint128 amount) external;
+    function setEntryStake(uint128 amount) external;
+
+    function getSnake() external view responsible returns (Path);
+    //function getLadder() external view responsible returns (Path);
+    function onSnakeReceived(Path snake) external;
+    //function onLadderReceived(Path ladder) external;
+}
