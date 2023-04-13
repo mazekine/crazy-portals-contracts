@@ -83,8 +83,8 @@ const config: LockliftConfig = {
         },
       },
       giver: {
-        address: "0:0000000000000000000000000000000000000000000000000000000000000000",
-        key: "secret key",
+        address: "0:2746d46337aa25d790c97f1aefb01a5de48cc1315b41a4f32753146a1e1aeb7d",
+        key: "bb2903d025a330681e78f3bcb248d7d89b861f3e8a480eb74438ec0299319f7a",
       },
       tracing: {
         endpoint: DEV_NET_NETWORK_ENDPOINT,

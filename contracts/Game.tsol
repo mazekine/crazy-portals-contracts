@@ -9,6 +9,8 @@ import "./libraries/Gas.tsol";
 import "@broxus/contracts/contracts/libraries/MsgFlag.tsol";
 
 contract Game is IGame, Ownable, Cashback {
+    uint64  public static nonce;
+
     uint64  private MAX_ROUND_DURATION_MS_DEFAULT = 30 * 60 * 1000; //  30 minutes
     uint64  private MOVE_DURATION_MS_DEFAULT  = 60_000;         //  1 minute
 
@@ -98,8 +100,6 @@ contract Game is IGame, Ownable, Cashback {
         external
         responsible
         override
-        reservable
-        cashback
     returns (uint8 dice, Coordinate newPosition) {
         address player = msg.sender;
         require(playerRound.exists(player), BaseErrorCodes.NOT_ALLOWED);
@@ -158,16 +158,14 @@ contract Game is IGame, Ownable, Cashback {
             }
         }
 
-        return {value: 0, flag: MsgFlag.ALL_NOT_RESERVED, bounce: false} (diceVal, Coordinate(x, y));
+        return {value: 0, flag: MsgFlag.REMAINING_GAS, bounce: false} (diceVal, Coordinate(x, y));
     }
 
     function createRound()
         external
-        //responsible
+        responsible
         override
-        reservable
-        cashback
-    /*returns (Round round)*/ {
+    returns (Round round) {
         require(boardInitialized, BaseErrorCodes.TOO_EARLY);
 
         uint64 roundId = block.timestamp;
@@ -188,15 +186,15 @@ contract Game is IGame, Ownable, Cashback {
 
         emit RoundCreated(address(this), newRound);
 
-        /*return {value: 0, flag: MsgFlag.ALL_NOT_RESERVED, bounce: false} newRound;*/
+        return {value: 0, flag: MsgFlag.REMAINING_GAS, bounce: false} newRound;
     }
 
     function getRound(uint64 roundId) external view responsible override returns (optional(Round) round) {
-        return {value: 0, flag: MsgFlag.ALL_NOT_RESERVED, bounce: false} rounds.fetch(roundId);
+        return {value: 0, flag: MsgFlag.REMAINING_GAS, bounce: false} rounds.fetch(roundId);
     }
 
     function getRounds() external view responsible override returns (Round[] _rounds) {
-        return {value: 0, flag: MsgFlag.ALL_NOT_RESERVED, bounce: false} rounds.values();
+        return {value: 0, flag: MsgFlag.REMAINING_GAS, bounce: false} rounds.values();
     }
 
     function setMaxPlayers(uint8 qty) external override onlyOwner reservable cashback {
@@ -231,8 +229,6 @@ contract Game is IGame, Ownable, Cashback {
         external
         responsible
         override
-        reservable
-        cashback
     returns (bool result) {
         require(rounds.exists(roundId), BaseErrorCodes.ITEM_NOT_FOUND);
 
@@ -253,7 +249,7 @@ contract Game is IGame, Ownable, Cashback {
 
         emit RoundJoined(address(this), rounds[roundId], player);
 
-        return {value: 0, flag: MsgFlag.REMAINING_GAS, bounce: false} true;
+        return {value: 0, bounce: false, flag: MsgFlag.REMAINING_GAS} (true);
     }
 
     function claim(uint64 roundId) external override reservable cashback {

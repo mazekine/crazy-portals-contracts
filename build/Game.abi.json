@@ -46,8 +46,10 @@
 		{
 			"name": "createRound",
 			"inputs": [
+				{"name":"answerId","type":"uint32"}
 			],
 			"outputs": [
+				{"components":[{"name":"id","type":"uint64"},{"name":"validUntil","type":"uint64"},{"name":"status","type":"uint8"},{"name":"maxPlayers","type":"uint8"},{"name":"entryStake","type":"uint128"},{"name":"prizeFund","type":"uint128"},{"name":"prizeClaimed","type":"bool"},{"name":"winner","type":"address"}],"name":"round","type":"tuple"}
 			]
 		},
 		{
@@ -144,6 +146,14 @@
 			]
 		},
 		{
+			"name": "nonce",
+			"inputs": [
+			],
+			"outputs": [
+				{"name":"nonce","type":"uint64"}
+			]
+		},
+		{
 			"name": "rounds",
 			"inputs": [
 			],
@@ -233,6 +243,7 @@
 		}
 	],
 	"data": [
+		{"key":1,"name":"nonce","type":"uint64"}
 	],
 	"events": [
 		{
@@ -350,6 +361,7 @@
 		{"name":"_constructorFlag","type":"bool"},
 		{"name":"_owner","type":"address"},
 		{"name":"_initialized","type":"bool"},
+		{"name":"nonce","type":"uint64"},
 		{"name":"MAX_ROUND_DURATION_MS_DEFAULT","type":"uint64"},
 		{"name":"MOVE_DURATION_MS_DEFAULT","type":"uint64"},
 		{"components":[{"name":"id","type":"uint64"},{"name":"validUntil","type":"uint64"},{"name":"status","type":"uint8"},{"name":"maxPlayers","type":"uint8"},{"name":"entryStake","type":"uint128"},{"name":"prizeFund","type":"uint128"},{"name":"prizeClaimed","type":"bool"},{"name":"winner","type":"address"}],"name":"rounds","type":"map(uint64,tuple)"},

@@ -60,7 +60,7 @@ interface IGame {
     function roll() external responsible returns (uint8 dice, Coordinate newPosition);
     function claim(uint64 roundId) external;
 
-    function createRound() external /*responsible returns (Round round)*/;
+    function createRound() external responsible returns (Round round);
     function getRound(uint64 roundId) external view responsible returns (optional(Round) round);
     function getRounds() external view responsible returns (Round[] rounds);
     function joinRound(uint64 roundId) external responsible returns (bool result);
