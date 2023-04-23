@@ -50,6 +50,7 @@ library BaseErrorCodes {
     uint16 constant REWRITING_HISTORY                               = 5002;
     uint16 constant PERIOD_INTERSECTION                             = 5003;
     uint16 constant TOO_LATE                                        = 5004;
+    uint16 constant FINISHED                                        = 5005;
 
     //  Filters
     uint16 constant UNSUPPORTED_FIELD_TYPE                          = 6000;

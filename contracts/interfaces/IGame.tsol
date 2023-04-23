@@ -3,8 +3,8 @@ pragma ever-solidity >= 0.62.0;
 
 interface IGame {
     struct Coordinate {
-        uint8 x;
-        uint8 y;
+        uint16 x;
+        uint16 y;
     }
 
     enum PathType {
@@ -18,14 +18,15 @@ interface IGame {
     }
 
     enum RoundStatus {
-        NotStarted, Active, Finished, Expired
+        NotStarted, Ready, Active, Finished, Expired
     }
 
     struct Round {
         uint64      id;
         uint64      validUntil;
+        uint64      moveDuration;
         RoundStatus status;
-        uint8       maxPlayers;
+        uint16       maxPlayers;
         uint128     entryStake;
         uint128     prizeFund;
         bool        prizeClaimed;
@@ -33,39 +34,52 @@ interface IGame {
     }
 
     struct Board {
-        uint8 columns;
-        uint8 rows;
+        uint16 columns;
+        uint16 rows;
     }
 
     struct Move {
         uint64    expiresAt;
-        address[] playersMoved;
+        mapping(address => Step[]) playerSteps;
     }
 
-    event DiceRolled(address player, uint8 dice, Coordinate from, Coordinate to);
+    struct Location {
+        uint16      cell;
+        Coordinate coordinate;
+    }
+
+    struct Step {
+        Location from;
+        Location to;
+    }
+
+    event DiceRolled(address player, uint16 dice);
     event PathFound(address player, Path path);
     event BoardGenerated(Board board, Path[] snakes, Path[] ladders);
 
     event EntryStakeUpdated(address board, uint128 oldValue, uint128 newValue);
     event PrizeFundUpdated(address board, uint128 oldValue, uint128 newValue);
     event MaxRoundTimeMsUpdated(address board, uint64 oldValue, uint64 newValue);
-    event MaxPlayersUpdated(address board, uint8 oldValue, uint8 newValue);
+    event MaxPlayersUpdated(address board, uint16 oldValue, uint16 newValue);
 
-    event RoundCreated(address board, Round round);
-    event RoundJoined(address board, Round round, address player);
-    event PrizeClaimed(address board, Round rouns, address player);
+    event RoundCreated(address board, uint64 roundId);
+    event RoundJoined(address board, uint64 roundId, address player);
+    event PlayerMoved(address board, uint64 round, address player, Location from, Location to);
+    event RoundFinished(address board, uint64 roundId, address winner);
+    event PrizeClaimed(address board, uint64 roundId, address player);
 
-    function generateBoard(uint seed, uint8 maxSnakes, uint8 maxLadders) external;
+    function generateBoard(uint seed, uint16 maxSnakes, uint16 maxLadders) external;
     function getBoard() external view responsible returns (Board board, Path[] snakes, Path[] ladders);
-    function roll() external responsible returns (uint8 dice, Coordinate newPosition);
+    function roll() external responsible returns (uint16 dice, Coordinate newPosition);
     function claim(uint64 roundId) external;
 
     function createRound() external responsible returns (Round round);
     function getRound(uint64 roundId) external view responsible returns (optional(Round) round);
-    function getRounds() external view responsible returns (Round[] rounds);
+    function getRounds(optional(RoundStatus) status) external view responsible returns (Round[] rounds);
+    function getRoundLatestMove(uint64 roundId) external view responsible returns (optional(Move) move);
     function joinRound(uint64 roundId) external responsible returns (bool result);
 
-    function setMaxPlayers(uint8 qty) external;
+    function setMaxPlayers(uint16 qty) external;
     function setMaxRoundTimeMs(uint64 ms) external;
     function setPrizeFund(uint128 amount) external;
     function setEntryStake(uint128 amount) external;

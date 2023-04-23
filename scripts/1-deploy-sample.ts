@@ -4,14 +4,19 @@ import {
     Address,
     lockliftChai
 } from "locklift";
+import {FactorySource, GameAbi} from "../build/factorySource";
 
 chai.use(lockliftChai);
 
 async function main() {
-    await locklift.deployments.fixture({include: ["deployer"]});
+    await locklift.deployments.fixture({include: ["deployer", "testGame"]});
+/*
     const signer = (await locklift.keystore.getSigner("0"))!;
+*/
     let deployer = await locklift.deployments.getAccount("Deployer").account.address;
+    let game = locklift.deployments.getContract<GameAbi>("TestGame");
 
+/*
     const {contract: game} = await locklift.factory.deployContract({
         contract: "Game",
         publicKey: signer.publicKey,
@@ -24,6 +29,7 @@ async function main() {
         },
         value: locklift.utils.toNano(1),
     });
+*/
 
     console.log(`Game deployed at: ${game.address.toString()}`);
 
@@ -105,15 +111,21 @@ async function main() {
     expect(createRoundTx.traceTree).emit("RoundCreated")
         .and.not.to.have.error();
 
+/*
     const roundEvents = createRoundTx.traceTree?.findEventsForContract({
         contract: game,
         name: "RoundCreated" as const
     });
 
-    const round = roundEvents?.pop()?.round
-    const roundId = round?.id;
+    const roundId = roundEvents?.pop()?.roundId;
 
     expect(roundId).not.to.be.equal(undefined, "Round has not created");
+*/
+    const round = await game.methods.getRounds({ answerId: 0, status: 0 }).call();
+    expect(round._rounds.length).to.be.equal(1, "Incorrect rounds number");
+
+    const roundId = +round._rounds.pop()!!.id;
+
 
     const walletBalance = +(await locklift.provider.getBalance(new Address("0:2746d46337aa25d790c97f1aefb01a5de48cc1315b41a4f32753146a1e1aeb7d")));
     if (walletBalance < 1000) {

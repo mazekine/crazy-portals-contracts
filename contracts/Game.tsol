@@ -15,7 +15,7 @@ contract Game is IGame, Ownable, Cashback {
     uint64  private MOVE_DURATION_MS_DEFAULT  = 60_000;         //  1 minute
 
     mapping(uint64 => Round) public rounds;
-    uint8   public maxPlayers = 4;
+    uint16  public maxPlayers = 4;
     uint64  public maxRoundDurationMs = MAX_ROUND_DURATION_MS_DEFAULT;
     uint64  public maxMoveDurationMs = MOVE_DURATION_MS_DEFAULT;
     Board   public board;
@@ -25,17 +25,17 @@ contract Game is IGame, Ownable, Cashback {
     uint    public seed;
     uint128 public prizeFundPerRound;
     uint128 public entryStake;
-    uint8   public maxSnakes;
-    uint8   public maxLadders;
+    uint16  public maxSnakes;
+    uint16  public maxLadders;
 
     mapping(address => uint64)       playerRound;
     mapping(uint64 => address[])     roundPlayers;
     mapping(uint64 => Move)          roundMoves;
-    mapping(address => uint8)        playerCell;
-    mapping(uint8 => optional(Path)) cells;
+    mapping(address => uint16)        playerCell;
+    mapping(uint16 => optional(Path)) cells;
 
-    constructor(address owner, uint8 size) public {
-        require(size == 8 || size == 10 || size == 12, BaseErrorCodes.NOT_ALLOWED);
+    constructor(address owner, uint16 size) public {
+        require((size % 2 == 0) || (size >= 6) || (size <= 16), BaseErrorCodes.NOT_ALLOWED);
 
         tvm.accept();
         board = Board(size, size);
@@ -43,7 +43,7 @@ contract Game is IGame, Ownable, Cashback {
         _initOwnable(owner);
     }
 
-    function generateBoard(uint _seed, uint8 _maxSnakes, uint8 _maxLadders)
+    function generateBoard(uint _seed, uint16 _maxSnakes, uint16 _maxLadders)
         external
         override
         onlyOwner
@@ -61,10 +61,10 @@ contract Game is IGame, Ownable, Cashback {
         rnd.setSeed(seed);
         rnd.shuffle();
 
-        uint8 headCell;
-        uint8 tailCell;
+        uint16 headCell;
+        uint16 tailCell;
 
-        for(uint8 i = 0; i < maxSnakes; i++) {
+        for(uint16 i = 0; i < maxSnakes; i++) {
             Path snake = _getPath(PathType.Snake);
             headCell = _getCell(snake.from.x, snake.from.y);
             tailCell = _getCell(snake.to.x, snake.to.y);
@@ -73,7 +73,7 @@ contract Game is IGame, Ownable, Cashback {
             snakes.push(snake);
         }
 
-        for(uint8 i = 0; i < maxLadders; i++) {
+        for(uint16 i = 0; i < maxLadders; i++) {
             Path ladder = _getPath(PathType.Ladder);
             tailCell = _getCell(ladder.from.x, ladder.from.y);
             headCell = _getCell(ladder.to.x, ladder.to.y);
@@ -100,65 +100,132 @@ contract Game is IGame, Ownable, Cashback {
         external
         responsible
         override
-    returns (uint8 dice, Coordinate newPosition) {
+    returns (uint16 dice, Coordinate newPosition) {
         address player = msg.sender;
+        //  Check if the round is linked to the player
+        //  TODO: reset rounds after finish
         require(playerRound.exists(player), BaseErrorCodes.NOT_ALLOWED);
+        //  Check if player was put on the board
         require(playerCell.exists(player), BaseErrorCodes.ITEM_NOT_FOUND);
 
         uint64 roundId = playerRound[player];
+        //  Check if such round exists
         if(!rounds.exists(roundId)) {
             delete playerRound[player];
+            delete playerCell[player];
             revert(BaseErrorCodes.ITEM_NOT_FOUND);
         }
 
         Round round = rounds[roundId];
-        require(round.status != RoundStatus.Finished, BaseErrorCodes.NOT_ALLOWED);
+        //  Check that the round is not finished
+        require(round.status != RoundStatus.Finished, BaseErrorCodes.FINISHED);
+
+        //  Check that the round is not expired
+        //  TODO: on join round check that the previous one has finished or expired
         if(round.validUntil <= block.timestamp) {
             rounds[roundId].status = RoundStatus.Expired;
             revert(BaseErrorCodes.TOO_LATE);
         }
 
-        if(round.status == RoundStatus.NotStarted) {
+        //  Activate round if it's the first step in it
+        if(round.status == RoundStatus.Ready) {
+            //  Check that prize if available
+            //  TODO: freeze the prize per rounds
             require(address(this).balance > (Gas.CONTRACT_MIN_BALANCE + round.prizeFund), BaseErrorCodes.NOT_ENOUGH_BALANCE);
-            require(roundPlayers.values().length == round.maxPlayers, BaseErrorCodes.NOT_ALLOWED);
+
+            //  Check that all players have joined
+            require(roundPlayers[roundId].length == round.maxPlayers, BaseErrorCodes.NOT_ALLOWED);
 
             round.status = RoundStatus.Active;
         }
 
-        rnd.shuffle(seed);
-        uint8 diceVal = rnd.next(6) + 1;
+        mapping(address => Step[]) playersMoved;
+        Step[]  steps;
+        Move    move;
 
-        uint8   curCell = playerCell[player];
-        uint8   newCell = curCell + diceVal;
-        uint8   boardOverflow = board.columns * board.rows - newCell;
+        if(roundMoves.exists(roundId)) {
+            //  If any player has moved already in this round
+            move = roundMoves.fetch(roundId).get();
 
-        if(boardOverflow < 0) {
-            newCell = board.columns * board.rows - boardOverflow;
-        } else if (boardOverflow == 0) {
+            if(
+                (move.expiresAt < block.timestamp) ||                   //  If move has expired
+                (move.playerSteps.keys().length == round.maxPlayers)    //  or all players have moved
+            ) {
+                move = Move(block.timestamp + round.moveDuration, playersMoved);
+            }
+        } else {
+            move = Move(block.timestamp + round.moveDuration, playersMoved);
+        }
+
+        //  Check that player hasn't moved yet
+        for(address _player : move.playerSteps.keys()) {
+            require(!(_player == player), BaseErrorCodes.NOT_ALLOWED);
+        }
+
+        move.playerSteps[player] = steps;
+
+        //roundMoves[roundId] = move; //  Do I need to leave it here?
+
+        rnd.shuffle();
+        uint16 diceVal = rnd.next(6) + 1;   //  TEST: 5
+
+        emit DiceRolled(player, dice);
+
+        Location    curLocation;
+        Location    prevLocation;
+        uint16      curCell = playerCell[player];  //  TEST: 0
+        uint16      newCell = curCell + diceVal;   //  TEST: 5
+        int16       boardOverflow = int16(board.columns) * int16(board.rows) - int16(newCell); // TEST: 100 - 5 = 95
+        uint16      x;
+        uint16      y;
+
+        prevLocation = Location(curCell, _getCoordinate(curCell));  // TEST: {0, {0, 0}}
+        curLocation  = Location(newCell, _getCoordinate(newCell));  // TEST: {5, {5, 1}}
+
+        if(boardOverflow < 0) { //  TEST: false
+            newCell = uint16(int16(board.columns * board.rows) + boardOverflow);
+            curLocation  = Location(newCell, _getCoordinate(newCell));
+        } else if (boardOverflow == 0) {    //  TEST: false
             //  Player has won
             rounds[roundId].status = RoundStatus.Finished;
             rounds[roundId].winner = player;
+            move.playerSteps[player].push(Step(prevLocation, curLocation));
+            roundMoves[roundId] = move;
+
+            emit RoundFinished(address(this), roundId, player);
+            return {value: 0, flag: MsgFlag.REMAINING_GAS, bounce: false} (diceVal, _getCoordinate(newCell));
         }
 
-        (uint8 y, uint8 x) = math.divmod(newCell, board.columns);
+        move.playerSteps[player].push(Step(prevLocation, curLocation));
 
-        bool rtl = (y % 2 == 0);
-        if (rtl) {
-            x = board.columns - x;
-        }
+        x = curLocation.coordinate.x;   //  TEST: 5
+        y = curLocation.coordinate.y;   //  TEST: 1
 
         bool flag;
         while(!flag) {
-            (uint8 _x, uint8 _y) = _checkContinuation(player, x, y);
+            (uint16 _x, uint16 _y) = _checkContinuation(player, x, y);
             if(_x == x && _y == y) {
-                flag = true;
+                flag = true;    //  TEST: true
             } else {
                 x = _x;
                 y = _y;
+
+                prevLocation = curLocation;
+                curLocation = Location(_getCell(x, y), Coordinate(x, y));
+                move.playerSteps[player].push(Step(prevLocation, curLocation));
+                emit PlayerMoved(address(this), roundId, player, prevLocation, curLocation);
             }
         }
 
+        newCell = _getCell(x, y);   //  TEST: 5
+        playerCell[player] = newCell;
+        roundMoves[roundId] = move;
+
         return {value: 0, flag: MsgFlag.REMAINING_GAS, bounce: false} (diceVal, Coordinate(x, y));
+    }
+
+    function getRoundLatestMove(uint64 roundId) external view responsible override returns (optional(Move) move) {
+        return {value: 0, flag: MsgFlag.REMAINING_GAS, bounce: false} (roundMoves.fetch(roundId));
     }
 
     function createRound()
@@ -174,6 +241,7 @@ contract Game is IGame, Ownable, Cashback {
         Round newRound = Round(
             roundId,
             roundId + maxRoundDurationMs,
+            maxMoveDurationMs,
             RoundStatus.NotStarted,
             maxPlayers,
             entryStake,
@@ -184,7 +252,7 @@ contract Game is IGame, Ownable, Cashback {
 
         rounds[roundId] = newRound;
 
-        emit RoundCreated(address(this), newRound);
+        emit RoundCreated(address(this), roundId);
 
         return {value: 0, flag: MsgFlag.REMAINING_GAS, bounce: false} newRound;
     }
@@ -193,12 +261,20 @@ contract Game is IGame, Ownable, Cashback {
         return {value: 0, flag: MsgFlag.REMAINING_GAS, bounce: false} rounds.fetch(roundId);
     }
 
-    function getRounds() external view responsible override returns (Round[] _rounds) {
-        return {value: 0, flag: MsgFlag.REMAINING_GAS, bounce: false} rounds.values();
+    function getRounds(optional(RoundStatus) status) external view responsible override returns (Round[] _rounds) {
+        if(!status.hasValue()) return {value: 0, flag: MsgFlag.REMAINING_GAS, bounce: false} rounds.values();
+
+        Round[] result;
+        RoundStatus rs = status.get();
+        for(Round round : rounds.values()) {
+            if(round.status == rs) result.push(round);
+        }
+
+        return {value: 0, flag: MsgFlag.REMAINING_GAS, bounce: false} result;
     }
 
-    function setMaxPlayers(uint8 qty) external override onlyOwner reservable cashback {
-        uint8 oldVal = maxPlayers;
+    function setMaxPlayers(uint16 qty) external override onlyOwner reservable cashback {
+        uint16 oldVal = maxPlayers;
         maxPlayers = qty;
 
         emit MaxPlayersUpdated(address(this), oldVal, maxPlayers);
@@ -231,6 +307,7 @@ contract Game is IGame, Ownable, Cashback {
         override
     returns (bool result) {
         require(rounds.exists(roundId), BaseErrorCodes.ITEM_NOT_FOUND);
+        require(roundPlayers[roundId].length < rounds[roundId].maxPlayers, BaseErrorCodes.NOT_ALLOWED);
 
         address player = msg.sender;
         for(address _player : roundPlayers[roundId]) {
@@ -246,30 +323,33 @@ contract Game is IGame, Ownable, Cashback {
 
         playerRound[player] = roundId;
         roundPlayers[roundId].push(player);
+        playerCell[player] = 0;
 
-        emit RoundJoined(address(this), rounds[roundId], player);
+        if(roundPlayers[roundId].length == rounds[roundId].maxPlayers) rounds[roundId].status = RoundStatus.Ready;
+
+        emit RoundJoined(address(this), roundId, player);
 
         return {value: 0, bounce: false, flag: MsgFlag.REMAINING_GAS} (true);
     }
 
-    function claim(uint64 roundId) external override reservable cashback {
+    function claim(uint64 roundId) external override /*reservable cashback*/ {
         require(rounds.exists(roundId), BaseErrorCodes.ITEM_NOT_FOUND);
         Round round = rounds[roundId];
 
-        require(round.status == RoundStatus.Finished, BaseErrorCodes.NOT_ALLOWED);
+        require(round.status == RoundStatus.Finished, BaseErrorCodes.WRONG_STATE);
         require(round.winner == msg.sender, BaseErrorCodes.NOT_ALLOWED);
         require(address(this).balance > (Gas.CONTRACT_MIN_BALANCE + round.prizeFund), BaseErrorCodes.NOT_ENOUGH_BALANCE);
-        require(!round.prizeClaimed, BaseErrorCodes.NOT_ALLOWED);
+        require(!round.prizeClaimed, BaseErrorCodes.FINISHED);
 
-        msg.sender.transfer({value: round.prizeFund, bounce: false});
+        round.winner.transfer({value: round.prizeFund, bounce: false});
         rounds[roundId].prizeClaimed = true;
 
-        emit PrizeClaimed(address(this), round, msg.sender);
+        emit PrizeClaimed(address(this), roundId, round.winner);
     }
 
-    function _checkContinuation(address player, uint8 x, uint8 y) internal view returns (uint8 _x, uint8 _y) {
-        _x = x;
-        _y = y;
+    function _checkContinuation(address player, uint16 x, uint16 y) internal view returns (uint16 _x, uint16 _y) {
+        _x = x; //  TEST: 5
+        _y = y; //  TEST: 1
 
         for(Path snake : snakes) {
             if(snake.from.x == x && snake.from.y == y) {
@@ -292,18 +372,32 @@ contract Game is IGame, Ownable, Cashback {
         return (_x, _y);
     }
 
-    function _getCell(uint8 x, uint8 y) private view returns (uint8 cell) {
+    function _getCell(uint16 x, uint16 y) private view returns (uint16 cell) {
         bool rtl = (y % 2 == 0);
-        if (rtl) x = board.columns - x;
-        return (y * board.columns + x);
+        if (rtl) x = board.columns - x + 1;
+        return ((y - 1) * board.columns + x);
+    }
+
+    function _getCoordinate(uint16 cell) private view returns (Coordinate) {
+        if(cell == 0) return Coordinate(0, 0);
+
+        uint16 y = (cell - 1) / board.columns + 1;  //  TEST: (5 - 1) / 10 + 1 = 1
+        uint16 x = cell - (y - 1) * board.columns;  //  TEST: 5 - (1 - 1) * 10 = 5
+
+        bool rtl = (y % 2 == 0);    //  TEST: false
+        if (rtl) {
+            x = board.columns - x + 1;
+        }
+
+        return Coordinate(x, y);
     }
 
     function _getPath(PathType pathType) private view returns (Path path) {
         Coordinate head;
         Coordinate tail;
 
-        uint8 headCell;
-        uint8 tailCell;
+        uint16 headCell;
+        uint16 tailCell;
 
         bool flag;
         while(!flag) {
