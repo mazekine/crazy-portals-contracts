@@ -403,15 +403,15 @@ describe("Test Game", async function () {
             expect(claimTx.traceTree).to.not.have.error();
             //console.log(claimTx.traceTree?.balanceChangeInfo?.balanceDiff?.balanceDiff?.toNumber());
 
-            console.log(claimTx.traceTree!.viewTraceTree);
-            console.log(claimTx.traceTree?.getBalanceDiff([game, deployer, opponent]));
+            //console.log(claimTx.traceTree!.viewTraceTree);
+            //console.log(claimTx.traceTree?.getBalanceDiff([game, deployer, opponent]));
 
             let winnerBalanceAfterClaim = +(await locklift.provider.getBalance(winner));
             let prize = winnerBalanceAfterClaim - winnerBalanceBeforeClaim;
 
             console.log(nTabulator + "Received prize of " + locklift.utils.fromNano(prize) + " EVER\n");
 
-            expect(prize).to.be.greaterThanOrEqual(+round.round!!.prizeFund - 1, "Incorrect prize received");
+            expect(prize).to.be.greaterThanOrEqual(+round.round!!.prizeFund - +locklift.utils.toNano(1), "Incorrect prize received");
         });
     });
 });

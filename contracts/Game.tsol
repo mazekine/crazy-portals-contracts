@@ -332,13 +332,13 @@ contract Game is IGame, Ownable, Cashback {
         return {value: 0, bounce: false, flag: MsgFlag.REMAINING_GAS} (true);
     }
 
-    function claim(uint64 roundId) external override /*reservable cashback*/ {
+    function claim(uint64 roundId) external override reservable cashback {
         require(rounds.exists(roundId), BaseErrorCodes.ITEM_NOT_FOUND);
         Round round = rounds[roundId];
 
         require(round.status == RoundStatus.Finished, BaseErrorCodes.WRONG_STATE);
         require(round.winner == msg.sender, BaseErrorCodes.NOT_ALLOWED);
-        require(address(this).balance > (Gas.CONTRACT_MIN_BALANCE + round.prizeFund), BaseErrorCodes.NOT_ENOUGH_BALANCE);
+        require(address(this).balance > round.prizeFund, BaseErrorCodes.NOT_ENOUGH_BALANCE);
         require(!round.prizeClaimed, BaseErrorCodes.FINISHED);
 
         round.winner.transfer({value: round.prizeFund, bounce: false});

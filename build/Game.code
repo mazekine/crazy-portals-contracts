@@ -3335,6 +3335,12 @@ CALLREF {
 THROW 0
 
 .macro claim_aab8ab0c_internal_macro
+.loc ../contracts/abstracts/Cashback.tsol, 13
+CALLREF {
+	CALL $Utils_no_obj__reserve_413ab4a8_macro$
+}
+PUSHINT 0
+RAWRESERVE
 .loc ../contracts/Game.tsol, 336
 PUSHINT 3006
 OVER
@@ -3422,7 +3428,7 @@ STGRAMS
 PUSHINT 107
 STZEROES
 ENDC
-PUSHINT 0
+PUSHINT 1
 SENDRAWMSG
 .loc ../contracts/Game.tsol, 345
 OVER
@@ -3506,6 +3512,16 @@ STBREFR
 STBREFR
 ENDC
 PUSHINT 0
+SENDRAWMSG
+.loc ../contracts/abstracts/Cashback.tsol, 20
+GETGLOB 9
+NEWC
+STSLICECONST x42_
+STSLICE
+PUSHINT 111
+STZEROES
+ENDC
+PUSHPOW2 7
 SENDRAWMSG
 .loc ../contracts/Game.tsol, 0
 
