@@ -17,7 +17,7 @@ abstract contract Cashback {
     /// Sends back the change after performing the call
     modifier cashback {
         _;
-        msg.sender.transfer({value: 0, flag: MsgFlag.REMAINING_GAS, bounce: false});
+        msg.sender.transfer({value: 0, flag: MsgFlag.ALL_NOT_RESERVED, bounce: false});
     }
 
     /// Sends back the change after performing the call to the indicated receiver

@@ -332,7 +332,7 @@ contract Game is IGame, Ownable, Cashback {
         return {value: 0, bounce: false, flag: MsgFlag.REMAINING_GAS} (true);
     }
 
-    function claim(uint64 roundId) external override reservable cashback {
+    function claim(uint64 roundId) external override /*reservable cashback*/ {
         require(rounds.exists(roundId), BaseErrorCodes.ITEM_NOT_FOUND);
         Round round = rounds[roundId];
 
