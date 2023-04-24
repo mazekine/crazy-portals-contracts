@@ -406,12 +406,13 @@ describe("Test Game", async function () {
             //let prize = winnerBalanceAfterClaim - winnerBalanceBeforeClaim;
 
             console.log(nTabulator + "Received prize of " + locklift.utils.fromNano(round.round!.prizeFund) + " EVER");
-            console.log(tabulator + "Game balance: " + locklift.utils.fromNano(await locklift.provider.getBalance(game.address)) + " EVER");
+            console.log(tabulator + "Game balance: " + locklift.utils.fromNano(await locklift.provider.getBalance(game.address)) + " EVER\n");
 
             let winnerBalanceBeforeClaim = winner == deployer ? deployerBalance : opponentBalance;
             let winnerSpent = winnerBalanceAfterClaim - winnerBalanceBeforeClaim - +round.round!.prizeFund;
 
-            console.log(tabulator + "Winner spent: " + locklift.utils.fromNano(winnerSpent) + " EVER\n");
+            console.log(tabulator + "Winner spent: " + locklift.utils.fromNano(winnerSpent) + " EVER");
+            console.log(tabulator + "Average gas per roll: " + locklift.utils.fromNano(winnerSpent / stepsCounter) + " EVER\n")
 
             //expect(prize).to.be.greaterThanOrEqual(+round.round!!.prizeFund - +locklift.utils.toNano(1), "Incorrect prize received");
         });
