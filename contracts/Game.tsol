@@ -13,8 +13,10 @@ contract Game is IGame, Ownable, Cashback {
 
     uint64  private MAX_ROUND_DURATION_MS_DEFAULT = 30 * 60 * 1000; //  30 minutes
     uint64  private MOVE_DURATION_MS_DEFAULT  = 60_000;         //  1 minute
+    uint128 private TX_STORAGE_FEE = 0.05 ever;
+    uint128 private RAKE = 0.01 ever;
 
-    mapping(uint64 => Round) public rounds;
+    mapping(uint64 => Round) rounds;
     uint16  public maxPlayers = 4;
     uint64  public maxRoundDurationMs = MAX_ROUND_DURATION_MS_DEFAULT;
     uint64  public maxMoveDurationMs = MOVE_DURATION_MS_DEFAULT;
@@ -22,7 +24,7 @@ contract Game is IGame, Ownable, Cashback {
     Path[]  snakes;
     Path[]  ladders;
     bool    public boardInitialized;
-    uint    public seed;
+    uint    seed;
     uint128 public prizeFundPerRound;
     uint128 public entryStake;
     uint16  public maxSnakes;
@@ -101,6 +103,8 @@ contract Game is IGame, Ownable, Cashback {
         responsible
         override
     returns (uint16 dice, Coordinate newPosition) {
+        tvm.rawReserve(msg.value - TX_STORAGE_FEE - RAKE, 1);  //  Reserve everything except the message value less storage fee and rake value
+
         address player = msg.sender;
         //  Check if the round is linked to the player
         //  TODO: reset rounds after finish
@@ -221,7 +225,7 @@ contract Game is IGame, Ownable, Cashback {
         playerCell[player] = newCell;
         roundMoves[roundId] = move;
 
-        return {value: 0, flag: MsgFlag.REMAINING_GAS, bounce: false} (diceVal, Coordinate(x, y));
+        return {value: 0, flag: MsgFlag.ALL_NOT_RESERVED, bounce: false} (diceVal, Coordinate(x, y));
     }
 
     function getRoundLatestMove(uint64 roundId) external view responsible override returns (optional(Move) move) {
@@ -306,6 +310,8 @@ contract Game is IGame, Ownable, Cashback {
         responsible
         override
     returns (bool result) {
+        tvm.rawReserve(msg.value - TX_STORAGE_FEE, 12); //  Reserve all except message value less storage fee
+
         require(rounds.exists(roundId), BaseErrorCodes.ITEM_NOT_FOUND);
         require(roundPlayers[roundId].length < rounds[roundId].maxPlayers, BaseErrorCodes.NOT_ALLOWED);
 
@@ -332,14 +338,18 @@ contract Game is IGame, Ownable, Cashback {
         return {value: 0, bounce: false, flag: MsgFlag.REMAINING_GAS} (true);
     }
 
-    function claim(uint64 roundId) external override /*reservable cashback*/ {
+    function claim(uint64 roundId) external override {
         require(rounds.exists(roundId), BaseErrorCodes.ITEM_NOT_FOUND);
         Round round = rounds[roundId];
 
-        require(round.status == RoundStatus.Finished, BaseErrorCodes.WRONG_STATE);
-        require(round.winner == msg.sender, BaseErrorCodes.NOT_ALLOWED);
+        require(address(this).balance > round.prizeFund + Utils.CONTRACT_MIN_BALANCE + msg.value, BaseErrorCodes.NOT_ENOUGH_BALANCE);
+
+        tvm.rawReserve(round.prizeFund + msg.value - tx.storageFee, 12);    //  Reserve all but prize fund for this round and message value less storage fee
+
+        require(round.status == RoundStatus.Finished,    BaseErrorCodes.WRONG_STATE);
+        require(round.winner == msg.sender,              BaseErrorCodes.NOT_ALLOWED);
         require(address(this).balance > round.prizeFund, BaseErrorCodes.NOT_ENOUGH_BALANCE);
-        require(!round.prizeClaimed, BaseErrorCodes.FINISHED);
+        require(!round.prizeClaimed,                     BaseErrorCodes.FINISHED);
 
         round.winner.transfer({value: round.prizeFund, bounce: false});
         rounds[roundId].prizeClaimed = true;

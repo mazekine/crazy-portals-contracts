@@ -165,14 +165,6 @@
 			]
 		},
 		{
-			"name": "rounds",
-			"inputs": [
-			],
-			"outputs": [
-				{"components":[{"name":"id","type":"uint64"},{"name":"validUntil","type":"uint64"},{"name":"moveDuration","type":"uint64"},{"name":"status","type":"uint8"},{"name":"maxPlayers","type":"uint16"},{"name":"entryStake","type":"uint128"},{"name":"prizeFund","type":"uint128"},{"name":"prizeClaimed","type":"bool"},{"name":"winner","type":"address"}],"name":"rounds","type":"map(uint64,tuple)"}
-			]
-		},
-		{
 			"name": "maxPlayers",
 			"inputs": [
 			],
@@ -210,14 +202,6 @@
 			],
 			"outputs": [
 				{"name":"boardInitialized","type":"bool"}
-			]
-		},
-		{
-			"name": "seed",
-			"inputs": [
-			],
-			"outputs": [
-				{"name":"seed","type":"uint256"}
 			]
 		},
 		{
@@ -395,6 +379,8 @@
 		{"name":"nonce","type":"uint64"},
 		{"name":"MAX_ROUND_DURATION_MS_DEFAULT","type":"uint64"},
 		{"name":"MOVE_DURATION_MS_DEFAULT","type":"uint64"},
+		{"name":"TX_STORAGE_FEE","type":"uint128"},
+		{"name":"RAKE","type":"uint128"},
 		{"components":[{"name":"id","type":"uint64"},{"name":"validUntil","type":"uint64"},{"name":"moveDuration","type":"uint64"},{"name":"status","type":"uint8"},{"name":"maxPlayers","type":"uint16"},{"name":"entryStake","type":"uint128"},{"name":"prizeFund","type":"uint128"},{"name":"prizeClaimed","type":"bool"},{"name":"winner","type":"address"}],"name":"rounds","type":"map(uint64,tuple)"},
 		{"name":"maxPlayers","type":"uint16"},
 		{"name":"maxRoundDurationMs","type":"uint64"},

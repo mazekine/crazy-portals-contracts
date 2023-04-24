@@ -14,6 +14,12 @@ abstract contract Cashback {
         _;
     }
 
+    modifier withExactReserve(uint128 amount) virtual {
+        require(address(this).balance > amount, BaseErrorCodes.NOT_ENOUGH_BALANCE);
+        tvm.rawReserve(amount, 0);
+        _;
+    }
+
     /// Sends back the change after performing the call
     modifier cashback {
         _;

@@ -18,7 +18,7 @@ export default async () => {
                 owner: deployer,
                 size: 10
             },
-            value: locklift.utils.toNano(1),
+            value: locklift.utils.toNano(0.2),
         }
     });
 }

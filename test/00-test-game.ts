@@ -131,6 +131,7 @@ describe("Test Game", async function () {
             );
 
             console.log(nTabulator + "Board generated");
+            console.log(tabulator + "Game balance: " + locklift.utils.fromNano(await locklift.provider.getBalance(game.address)) + " EVER");
         });
 
         it("Set maximum players", async function () {
@@ -151,6 +152,8 @@ describe("Test Game", async function () {
 
             const maxPlayers = await game.methods.maxPlayers().call();
             expect(+maxPlayers.maxPlayers).to.be.equal(2, "Wrong players number");
+            console.log(nTabulator + "Max players set to 2");
+            console.log(tabulator + "Game balance: " + locklift.utils.fromNano(await locklift.provider.getBalance(game.address)) + " EVER");
         });
 
         it("Set prize fund", async function () {
@@ -173,6 +176,9 @@ describe("Test Game", async function () {
 
             const prizeFund = await game.methods.prizeFundPerRound().call();
             expect(prizeFund.prizeFundPerRound).to.be.equal(locklift.utils.toNano(2), "Wrong prize fund");
+
+            console.log(nTabulator + "Prize fund set to 2 EVER");
+            console.log(tabulator + "Game balance: " + locklift.utils.fromNano(await locklift.provider.getBalance(game.address)) + " EVER");
         });
 
         it("Create round", async function () {
@@ -208,6 +214,7 @@ describe("Test Game", async function () {
             round = await game.methods.getRound({answerId: 0, roundId: roundId}).call();
 
             console.log(nTabulator + "Created round " + roundId);
+            console.log(tabulator + "Game balance: " + locklift.utils.fromNano(await locklift.provider.getBalance(game.address)) + " EVER");
         });
 
         it("Join round", async function () {
@@ -243,7 +250,7 @@ describe("Test Game", async function () {
                 .to.emit("RoundJoined")
                 .and.not.have.error();
 
-            console.log(nTabulator + "Deployer joined the round");
+            console.log(nTabulator + "Deployer " + maskAddress(deployer.toString()) + " joined the round");
 
             joinRoundTx = await locklift.tracing.trace(game
                 .methods
@@ -277,7 +284,8 @@ describe("Test Game", async function () {
                 .to.emit("RoundJoined")
                 .and.not.have.error();
 
-            console.log(tabulator + "Opponent joined the round");
+            console.log(tabulator + "Opponent " + maskAddress(opponent.toString()) + " joined the round");
+            console.log(tabulator + "Game balance: " + locklift.utils.fromNano(await locklift.provider.getBalance(game.address)) + " EVER");
 
             round = await game.methods.getRound({answerId: 0, roundId: roundId}).call();
 
@@ -322,6 +330,7 @@ describe("Test Game", async function () {
                     winner = round.round!!.winner;
                     const winnerName = winner == deployer ? "Deployer" : "Opponent";
                     console.log(nTabulator + "Round finished. " + winnerName + " has won");
+                    console.log(tabulator + "Game balance: " + locklift.utils.fromNano(await locklift.provider.getBalance(game.address)) + " EVER");
                     break;
                 }
 
@@ -330,7 +339,7 @@ describe("Test Game", async function () {
                     .roll({answerId: 0})
                     .send({
                         from: deployer,
-                        amount: locklift.utils.toNano(0.2),
+                        amount: locklift.utils.toNano(0.1),
                         bounce: true
                     }), {raise: true, allowedCodes: {compute: [1060, 5005]}}
                 );
@@ -342,7 +351,7 @@ describe("Test Game", async function () {
                     .roll({answerId: 0})
                     .send({
                         from: opponent,
-                        amount: locklift.utils.toNano(0.2),
+                        amount: locklift.utils.toNano(0.1),
                         bounce: true
                     }), {raise: true, allowedCodes: {compute: [1060, 5005]}}
                 );
@@ -357,7 +366,6 @@ describe("Test Game", async function () {
                 );
 
                 if (move.move) {
-                    console.log(tabulator.repeat(2) + "Game balance: " + locklift.utils.fromNano(await locklift.provider.getBalance(game.address)) + " EVER");
                     for (const [address, steps] of move.move.playerSteps) {
                         const maskedAddress = maskAddress(address.toString());
                         const stepsSummary = steps
@@ -368,48 +376,30 @@ describe("Test Game", async function () {
                             .join('; ');
                         console.log(tabulator.repeat(2) + `${maskedAddress}: ${stepsSummary}`);
                     }
+                    console.log(tabulator.repeat(2) + "Game balance: " + locklift.utils.fromNano(await locklift.provider.getBalance(game.address)) + " EVER");
                 }
             }
 
             //  Check the balance before claiming
             let winnerBalanceBeforeClaim = +(await locklift.provider.getBalance(winner));
 
-/*
             let claimTx = await locklift.tracing.trace(game
                 .methods
                 .claim({roundId: roundId})
                 .send({
                     from: winner,
-                    amount: locklift.utils.toNano(0.3),
-                    bounce: true
-                }), {raise: false}
-            );
-
-            expect(claimTx.traceTree).to.have.error(1060);
-*/
-
-            //await locklift.giver.sendTo(game.address, locklift.utils.toNano(2));
-
-            let claimTx = await locklift.tracing.trace(game
-                .methods
-                .claim({roundId: roundId})
-                .send({
-                    from: winner,
-                    amount: locklift.utils.toNano(0.4),
+                    amount: locklift.utils.toNano(0.1),
                     bounce: true
                 }), {raise: false}
             );
 
             expect(claimTx.traceTree).to.not.have.error();
-            //console.log(claimTx.traceTree?.balanceChangeInfo?.balanceDiff?.balanceDiff?.toNumber());
-
-            //console.log(claimTx.traceTree!.viewTraceTree);
-            //console.log(claimTx.traceTree?.getBalanceDiff([game, deployer, opponent]));
 
             let winnerBalanceAfterClaim = +(await locklift.provider.getBalance(winner));
             let prize = winnerBalanceAfterClaim - winnerBalanceBeforeClaim;
 
-            console.log(nTabulator + "Received prize of " + locklift.utils.fromNano(prize) + " EVER\n");
+            console.log(nTabulator + "Received prize of " + locklift.utils.fromNano(prize) + " EVER");
+            console.log(tabulator + "Game balance: " + locklift.utils.fromNano(await locklift.provider.getBalance(game.address)) + " EVER\n");
 
             expect(prize).to.be.greaterThanOrEqual(+round.round!!.prizeFund - +locklift.utils.toNano(1), "Incorrect prize received");
         });
