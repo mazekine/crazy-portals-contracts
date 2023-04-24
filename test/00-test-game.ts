@@ -70,12 +70,15 @@ describe("Test Game", async function () {
 
             expect(boardGeneratedTx.traceTree).has.error(3009);
 
+            const SNAKES = 8;
+            const LADDERS = 0;
+
             boardGeneratedTx = await locklift.tracing.trace(game
                 .methods
                 .generateBoard({
                     _seed: "31071986",
-                    _maxSnakes: 8,
-                    _maxLadders: 0
+                    _maxSnakes: SNAKES,
+                    _maxLadders: LADDERS
                 })
                 .send({
                     from: deployer,
@@ -92,8 +95,8 @@ describe("Test Game", async function () {
                 .getBoard({answerId: 0})
                 .call();
 
-            expect(board._snakes.length).to.be.equal(6, "Wrong number of snakes");
-            expect(board._ladders.length).to.be.equal(6, "Wrong number of ladders");
+            expect(board._snakes.length).to.be.equal(SNAKES, "Wrong number of snakes");
+            expect(board._ladders.length).to.be.equal(LADDERS, "Wrong number of ladders");
 
             let cells: Map<number, boolean> = new Map();
             board._snakes.forEach(
