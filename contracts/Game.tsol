@@ -197,7 +197,7 @@ contract Game is IGame, Ownable, Cashback {
             roundMoves[roundId] = move;
 
             emit RoundFinished(address(this), roundId, player);
-            return {value: 0, flag: MsgFlag.REMAINING_GAS, bounce: false} (diceVal, _getCoordinate(newCell));
+            return {value: 0, flag: MsgFlag.ALL_NOT_RESERVED, bounce: false} (diceVal, _getCoordinate(newCell));
         }
 
         move.playerSteps[player].push(Step(prevLocation, curLocation));
