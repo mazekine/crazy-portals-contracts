@@ -8,7 +8,7 @@ interface IGame {
     }
 
     enum PathType {
-        Snake, Ladder
+        RedBeam, BlueBeam
     }
 
     struct Path {
@@ -55,7 +55,7 @@ interface IGame {
 
     event DiceRolled(address player, uint16 dice);
     event PathFound(address player, Path path);
-    event BoardGenerated(Board board, Path[] snakes, Path[] ladders);
+    event BoardGenerated(Board board, Path[] redBeams, Path[] blueBeams);
 
     event EntryStakeUpdated(address board, uint128 oldValue, uint128 newValue);
     event PrizeFundUpdated(address board, uint128 oldValue, uint128 newValue);
@@ -68,8 +68,8 @@ interface IGame {
     event RoundFinished(address board, uint64 roundId, address winner);
     event PrizeClaimed(address board, uint64 roundId, address player);
 
-    function generateBoard(uint seed, uint16 maxSnakes, uint16 maxLadders) external;
-    function getBoard() external view responsible returns (Board board, Path[] snakes, Path[] ladders);
+    function generateBoard(uint seed, uint16 maxRedBeams, uint16 maxBlueBeams) external;
+    function getBoard() external view responsible returns (Board board, Path[] redBeams, Path[] blueBeams);
     function roll() external responsible returns (uint16 dice, Coordinate newPosition);
     function claim(uint64 roundId) external;
 

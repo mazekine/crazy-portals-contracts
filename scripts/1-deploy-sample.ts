@@ -37,8 +37,8 @@ async function main() {
         .methods
         .generateBoard({
             _seed: "31071986",
-            _maxSnakes: 6,
-            _maxLadders: 6
+            _maxRedBeams: 6,
+            _maxBlueBeams: 6
         })
         .send({
             from: deployer,
@@ -55,8 +55,8 @@ async function main() {
         .getBoard({answerId: 0})
         .call();
 
-    expect(board._snakes.length).to.be.equal(6, "Wrong number of snakes");
-    expect(board._ladders.length).to.be.equal(6, "Wrong number of ladders");
+    expect(board._redBeams.length).to.be.equal(6, "Wrong number of redBeams");
+    expect(board._blueBeams.length).to.be.equal(6, "Wrong number of blueBeams");
 
     console.log("Board generated");
 

@@ -58,8 +58,8 @@ describe("Test Game", async function () {
                 .methods
                 .generateBoard({
                     _seed: "31071986",
-                    _maxSnakes: 100,
-                    _maxLadders: 100
+                    _maxRedBeams: 100,
+                    _maxBlueBeams: 100
                 })
                 .send({
                     from: deployer,
@@ -77,8 +77,8 @@ describe("Test Game", async function () {
                 .methods
                 .generateBoard({
                     _seed: "31071986",
-                    _maxSnakes: SNAKES,
-                    _maxLadders: LADDERS
+                    _maxRedBeams: SNAKES,
+                    _maxBlueBeams: LADDERS
                 })
                 .send({
                     from: deployer,
@@ -95,40 +95,40 @@ describe("Test Game", async function () {
                 .getBoard({answerId: 0})
                 .call();
 
-            expect(board._snakes.length).to.be.equal(SNAKES, "Wrong number of snakes");
-            expect(board._ladders.length).to.be.equal(LADDERS, "Wrong number of ladders");
+            expect(board._redBeams.length).to.be.equal(SNAKES, "Wrong number of redBeams");
+            expect(board._blueBeams.length).to.be.equal(LADDERS, "Wrong number of blueBeams");
 
             let cells: Map<number, boolean> = new Map();
-            board._snakes.forEach(
-                (snake) => {
+            board._redBeams.forEach(
+                (redBeam) => {
                     //  Head
                     let cols = +board._board.columns;
-                    let cellNumber: number = getCell(+snake.from.x, +snake.from.y, cols);
-                    expect(cellNumber).to.be.lessThanOrEqual(+board._board.columns * +board._board.rows, "Snake head is located incorrectly:" + snake);
-                    expect(!cells.has(cellNumber), "Snakes generated incorrectly (head put on filled cell)\n" + board._snakes);
+                    let cellNumber: number = getCell(+redBeam.from.x, +redBeam.from.y, cols);
+                    expect(cellNumber).to.be.lessThanOrEqual(+board._board.columns * +board._board.rows, "RedBeam head is located incorrectly:" + redBeam);
+                    expect(!cells.has(cellNumber), "RedBeams generated incorrectly (head put on filled cell)\n" + board._redBeams);
                     cells.set(cellNumber, true);
 
                     //  Tail
-                    cellNumber = getCell(+snake.to.x, +snake.to.y, cols);
-                    expect(cellNumber).to.be.lessThanOrEqual(+board._board.columns * +board._board.rows, "Snake tail is located incorrectly:" + snake);
-                    expect(!cells.has(cellNumber), "Snakes generated incorrectly (tail put on filled cell)\n" + board._snakes);
+                    cellNumber = getCell(+redBeam.to.x, +redBeam.to.y, cols);
+                    expect(cellNumber).to.be.lessThanOrEqual(+board._board.columns * +board._board.rows, "RedBeam tail is located incorrectly:" + redBeam);
+                    expect(!cells.has(cellNumber), "RedBeams generated incorrectly (tail put on filled cell)\n" + board._redBeams);
                     cells.set(cellNumber, true);
                 }
             );
 
-            board._ladders.forEach(
-                (ladder) => {
+            board._blueBeams.forEach(
+                (blueBeam) => {
                     //  Head
                     let cols = +board._board.columns;
-                    let cellNumber: number = getCell(+ladder.from.x, +ladder.from.y, cols);
-                    expect(cellNumber).to.be.lessThanOrEqual(+board._board.columns * +board._board.rows, "Ladder head is located incorrectly:" + ladder);
-                    expect(!cells.has(cellNumber), "Ladders generated incorrectly (head put on filled cell)\n" + board._snakes);
+                    let cellNumber: number = getCell(+blueBeam.from.x, +blueBeam.from.y, cols);
+                    expect(cellNumber).to.be.lessThanOrEqual(+board._board.columns * +board._board.rows, "BlueBeam head is located incorrectly:" + blueBeam);
+                    expect(!cells.has(cellNumber), "BlueBeams generated incorrectly (head put on filled cell)\n" + board._redBeams);
                     cells.set(cellNumber, true);
 
                     //  Tail
-                    cellNumber = getCell(+ladder.to.x, +ladder.to.y, cols);
-                    expect(cellNumber).to.be.lessThanOrEqual(+board._board.columns * +board._board.rows, "Ladder tail is located incorrectly:" + ladder);
-                    expect(!cells.has(cellNumber), "Ladders generated incorrectly (tail put on filled cell)\n" + board._snakes);
+                    cellNumber = getCell(+blueBeam.to.x, +blueBeam.to.y, cols);
+                    expect(cellNumber).to.be.lessThanOrEqual(+board._board.columns * +board._board.rows, "BlueBeam tail is located incorrectly:" + blueBeam);
+                    expect(!cells.has(cellNumber), "BlueBeams generated incorrectly (tail put on filled cell)\n" + board._redBeams);
                     cells.set(cellNumber, true);
                 }
             );
@@ -348,7 +348,7 @@ describe("Test Game", async function () {
                         from: deployer,
                         amount: locklift.utils.toNano(0.1),
                         bounce: true
-                    }), {raise: true, allowedCodes: {compute: [1060, 5005]}}
+                    }), {raise: false, allowedCodes: {compute: [1060, 5005]}}
                 );
 
                 //expect(rollFirstTx.traceTree).to.not.have.error();
@@ -360,7 +360,7 @@ describe("Test Game", async function () {
                         from: opponent,
                         amount: locklift.utils.toNano(0.1),
                         bounce: true
-                    }), {raise: true, allowedCodes: {compute: [1060, 5005]}}
+                    }), {raise: false, allowedCodes: {compute: [1060, 5005]}}
                 );
 
                 //expect(rollSecondTx.traceTree).to.not.have.error();
@@ -412,7 +412,7 @@ describe("Test Game", async function () {
             let winnerSpent = winnerBalanceAfterClaim - winnerBalanceBeforeClaim - +round.round!.prizeFund;
 
             console.log(tabulator + "Winner spent: " + locklift.utils.fromNano(winnerSpent) + " EVER");
-            console.log(tabulator + "Average gas per roll: " + locklift.utils.fromNano(winnerSpent / stepsCounter) + " EVER\n")
+            console.log(tabulator + "Average gas per roll: " + (+locklift.utils.fromNano(winnerSpent / stepsCounter)).toPrecision(3) + " EVER\n")
 
             //expect(prize).to.be.greaterThanOrEqual(+round.round!!.prizeFund - +locklift.utils.toNano(1), "Incorrect prize received");
         });

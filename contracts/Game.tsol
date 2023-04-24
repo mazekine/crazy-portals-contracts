@@ -21,14 +21,14 @@ contract Game is IGame, Ownable, Cashback {
     uint64  public maxRoundDurationMs = MAX_ROUND_DURATION_MS_DEFAULT;
     uint64  public maxMoveDurationMs = MOVE_DURATION_MS_DEFAULT;
     Board   public board;
-    Path[]  snakes;
-    Path[]  ladders;
+    Path[]  redBeams;
+    Path[]  blueBeams;
     bool    public boardInitialized;
     uint    seed;
     uint128 public prizeFundPerRound;
     uint128 public entryStake;
-    uint16  public maxSnakes;
-    uint16  public maxLadders;
+    uint16  public maxRedBeams;
+    uint16  public maxBlueBeams;
 
     mapping(address => uint64)       playerRound;
     mapping(uint64 => address[])     roundPlayers;
@@ -45,7 +45,7 @@ contract Game is IGame, Ownable, Cashback {
         _initOwnable(owner);
     }
 
-    function generateBoard(uint _seed, uint16 _maxSnakes, uint16 _maxLadders)
+    function generateBoard(uint _seed, uint16 _maxRedBeams, uint16 _maxBlueBeams)
         external
         override
         onlyOwner
@@ -53,11 +53,11 @@ contract Game is IGame, Ownable, Cashback {
         cashback
     {
         require(!boardInitialized, BaseErrorCodes.ITEM_EXISTS);
-        require(_maxSnakes <= (board.rows - 2), BaseErrorCodes.VALUE_TOO_BIG);
-        require(_maxLadders <= (board.rows - 2), BaseErrorCodes.VALUE_TOO_BIG);
+        require(_maxRedBeams <= (board.rows - 2), BaseErrorCodes.VALUE_TOO_BIG);
+        require(_maxBlueBeams <= (board.rows - 2), BaseErrorCodes.VALUE_TOO_BIG);
 
-        maxSnakes = _maxSnakes;
-        maxLadders = _maxLadders;
+        maxRedBeams = _maxRedBeams;
+        maxBlueBeams = _maxBlueBeams;
 
         seed = _seed;
         rnd.setSeed(seed);
@@ -66,27 +66,27 @@ contract Game is IGame, Ownable, Cashback {
         uint16 headCell;
         uint16 tailCell;
 
-        for(uint16 i = 0; i < maxSnakes; i++) {
-            Path snake = _getPath(PathType.Snake);
-            headCell = _getCell(snake.from.x, snake.from.y);
-            tailCell = _getCell(snake.to.x, snake.to.y);
-            cells[headCell] = snake;
-            cells[tailCell] = snake;
-            snakes.push(snake);
+        for(uint16 i = 0; i < maxRedBeams; i++) {
+            Path redBeam = _getPath(PathType.RedBeam);
+            headCell = _getCell(redBeam.from.x, redBeam.from.y);
+            tailCell = _getCell(redBeam.to.x, redBeam.to.y);
+            cells[headCell] = redBeam;
+            cells[tailCell] = redBeam;
+            redBeams.push(redBeam);
         }
 
-        for(uint16 i = 0; i < maxLadders; i++) {
-            Path ladder = _getPath(PathType.Ladder);
-            tailCell = _getCell(ladder.from.x, ladder.from.y);
-            headCell = _getCell(ladder.to.x, ladder.to.y);
-            cells[headCell] = ladder;
-            cells[tailCell] = ladder;
-            ladders.push(ladder);
+        for(uint16 i = 0; i < maxBlueBeams; i++) {
+            Path blueBeam = _getPath(PathType.BlueBeam);
+            tailCell = _getCell(blueBeam.from.x, blueBeam.from.y);
+            headCell = _getCell(blueBeam.to.x, blueBeam.to.y);
+            cells[headCell] = blueBeam;
+            cells[tailCell] = blueBeam;
+            blueBeams.push(blueBeam);
         }
 
         boardInitialized = true;
 
-        emit BoardGenerated(board, snakes, ladders);
+        emit BoardGenerated(board, redBeams, blueBeams);
     }
 
     function getBoard()
@@ -94,8 +94,8 @@ contract Game is IGame, Ownable, Cashback {
         view
         responsible
         override
-    returns (Board _board, Path[] _snakes, Path[] _ladders) {
-        return {value: 0, flag: MsgFlag.ALL_NOT_RESERVED, bounce: false} (board, snakes, ladders);
+    returns (Board _board, Path[] _redBeams, Path[] _blueBeams) {
+        return {value: 0, flag: MsgFlag.ALL_NOT_RESERVED, bounce: false} (board, redBeams, blueBeams);
     }
 
     function roll()
@@ -361,21 +361,21 @@ contract Game is IGame, Ownable, Cashback {
         _x = x; //  TEST: 5
         _y = y; //  TEST: 1
 
-        for(Path snake : snakes) {
-            if(snake.from.x == x && snake.from.y == y) {
-                _x = snake.to.x;
-                _y = snake.to.y;
+        for(Path redBeam : redBeams) {
+            if(redBeam.from.x == x && redBeam.from.y == y) {
+                _x = redBeam.to.x;
+                _y = redBeam.to.y;
 
-                emit PathFound(player, snake);
+                emit PathFound(player, redBeam);
             }
         }
 
-        for(Path ladder : ladders) {
-            if(ladder.from.x == x && ladder.from.y == y) {
-                _x = ladder.to.x;
-                _y = ladder.to.y;
+        for(Path blueBeam : blueBeams) {
+            if(blueBeam.from.x == x && blueBeam.from.y == y) {
+                _x = blueBeam.to.x;
+                _y = blueBeam.to.y;
 
-                emit PathFound(player, ladder);
+                emit PathFound(player, blueBeam);
             }
         }
 
@@ -426,13 +426,13 @@ contract Game is IGame, Ownable, Cashback {
             tailCell = _getCell(tail.x, tail.y);
             flag = !cells[tailCell].hasValue();
 
-            if(pathType == PathType.Ladder) {
-                flag = flag && !(tailCell == 1);                //  Ladder cannot happen on the first cell
+            if(pathType == PathType.BlueBeam) {
+                flag = flag && !(tailCell == 1);                //  BlueBeam cannot happen on the first cell
             }
         }
 
         Path result;
-        if(pathType == PathType.Snake) {
+        if(pathType == PathType.RedBeam) {
             result = Path(head, tail, pathType);
         } else {
             result = Path(tail, head, pathType);
@@ -442,9 +442,9 @@ contract Game is IGame, Ownable, Cashback {
     }
 
     function _checkBoardInitialized() private {
-        if((snakes.length == maxSnakes) && (ladders.length == maxLadders)) {
+        if((redBeams.length == maxRedBeams) && (blueBeams.length == maxBlueBeams)) {
             boardInitialized = true;
-            emit BoardGenerated(board, snakes, ladders);
+            emit BoardGenerated(board, redBeams, blueBeams);
         }
     }
 

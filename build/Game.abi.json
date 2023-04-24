@@ -16,8 +16,8 @@
 			"name": "generateBoard",
 			"inputs": [
 				{"name":"_seed","type":"uint256"},
-				{"name":"_maxSnakes","type":"uint16"},
-				{"name":"_maxLadders","type":"uint16"}
+				{"name":"_maxRedBeams","type":"uint16"},
+				{"name":"_maxBlueBeams","type":"uint16"}
 			],
 			"outputs": [
 			]
@@ -29,8 +29,8 @@
 			],
 			"outputs": [
 				{"components":[{"name":"columns","type":"uint16"},{"name":"rows","type":"uint16"}],"name":"_board","type":"tuple"},
-				{"components":[{"components":[{"name":"x","type":"uint16"},{"name":"y","type":"uint16"}],"name":"from","type":"tuple"},{"components":[{"name":"x","type":"uint16"},{"name":"y","type":"uint16"}],"name":"to","type":"tuple"},{"name":"type_","type":"uint8"}],"name":"_snakes","type":"tuple[]"},
-				{"components":[{"components":[{"name":"x","type":"uint16"},{"name":"y","type":"uint16"}],"name":"from","type":"tuple"},{"components":[{"name":"x","type":"uint16"},{"name":"y","type":"uint16"}],"name":"to","type":"tuple"},{"name":"type_","type":"uint8"}],"name":"_ladders","type":"tuple[]"}
+				{"components":[{"components":[{"name":"x","type":"uint16"},{"name":"y","type":"uint16"}],"name":"from","type":"tuple"},{"components":[{"name":"x","type":"uint16"},{"name":"y","type":"uint16"}],"name":"to","type":"tuple"},{"name":"type_","type":"uint8"}],"name":"_redBeams","type":"tuple[]"},
+				{"components":[{"components":[{"name":"x","type":"uint16"},{"name":"y","type":"uint16"}],"name":"from","type":"tuple"},{"components":[{"name":"x","type":"uint16"},{"name":"y","type":"uint16"}],"name":"to","type":"tuple"},{"name":"type_","type":"uint8"}],"name":"_blueBeams","type":"tuple[]"}
 			]
 		},
 		{
@@ -221,19 +221,19 @@
 			]
 		},
 		{
-			"name": "maxSnakes",
+			"name": "maxRedBeams",
 			"inputs": [
 			],
 			"outputs": [
-				{"name":"maxSnakes","type":"uint16"}
+				{"name":"maxRedBeams","type":"uint16"}
 			]
 		},
 		{
-			"name": "maxLadders",
+			"name": "maxBlueBeams",
 			"inputs": [
 			],
 			"outputs": [
-				{"name":"maxLadders","type":"uint16"}
+				{"name":"maxBlueBeams","type":"uint16"}
 			]
 		}
 	],
@@ -272,8 +272,8 @@
 			"name": "BoardGenerated",
 			"inputs": [
 				{"components":[{"name":"columns","type":"uint16"},{"name":"rows","type":"uint16"}],"name":"board","type":"tuple"},
-				{"components":[{"components":[{"name":"x","type":"uint16"},{"name":"y","type":"uint16"}],"name":"from","type":"tuple"},{"components":[{"name":"x","type":"uint16"},{"name":"y","type":"uint16"}],"name":"to","type":"tuple"},{"name":"type_","type":"uint8"}],"name":"snakes","type":"tuple[]"},
-				{"components":[{"components":[{"name":"x","type":"uint16"},{"name":"y","type":"uint16"}],"name":"from","type":"tuple"},{"components":[{"name":"x","type":"uint16"},{"name":"y","type":"uint16"}],"name":"to","type":"tuple"},{"name":"type_","type":"uint8"}],"name":"ladders","type":"tuple[]"}
+				{"components":[{"components":[{"name":"x","type":"uint16"},{"name":"y","type":"uint16"}],"name":"from","type":"tuple"},{"components":[{"name":"x","type":"uint16"},{"name":"y","type":"uint16"}],"name":"to","type":"tuple"},{"name":"type_","type":"uint8"}],"name":"redBeams","type":"tuple[]"},
+				{"components":[{"components":[{"name":"x","type":"uint16"},{"name":"y","type":"uint16"}],"name":"from","type":"tuple"},{"components":[{"name":"x","type":"uint16"},{"name":"y","type":"uint16"}],"name":"to","type":"tuple"},{"name":"type_","type":"uint8"}],"name":"blueBeams","type":"tuple[]"}
 			],
 			"outputs": [
 			]
@@ -386,14 +386,14 @@
 		{"name":"maxRoundDurationMs","type":"uint64"},
 		{"name":"maxMoveDurationMs","type":"uint64"},
 		{"components":[{"name":"columns","type":"uint16"},{"name":"rows","type":"uint16"}],"name":"board","type":"tuple"},
-		{"components":[{"components":[{"name":"x","type":"uint16"},{"name":"y","type":"uint16"}],"name":"from","type":"tuple"},{"components":[{"name":"x","type":"uint16"},{"name":"y","type":"uint16"}],"name":"to","type":"tuple"},{"name":"type_","type":"uint8"}],"name":"snakes","type":"tuple[]"},
-		{"components":[{"components":[{"name":"x","type":"uint16"},{"name":"y","type":"uint16"}],"name":"from","type":"tuple"},{"components":[{"name":"x","type":"uint16"},{"name":"y","type":"uint16"}],"name":"to","type":"tuple"},{"name":"type_","type":"uint8"}],"name":"ladders","type":"tuple[]"},
+		{"components":[{"components":[{"name":"x","type":"uint16"},{"name":"y","type":"uint16"}],"name":"from","type":"tuple"},{"components":[{"name":"x","type":"uint16"},{"name":"y","type":"uint16"}],"name":"to","type":"tuple"},{"name":"type_","type":"uint8"}],"name":"redBeams","type":"tuple[]"},
+		{"components":[{"components":[{"name":"x","type":"uint16"},{"name":"y","type":"uint16"}],"name":"from","type":"tuple"},{"components":[{"name":"x","type":"uint16"},{"name":"y","type":"uint16"}],"name":"to","type":"tuple"},{"name":"type_","type":"uint8"}],"name":"blueBeams","type":"tuple[]"},
 		{"name":"boardInitialized","type":"bool"},
 		{"name":"seed","type":"uint256"},
 		{"name":"prizeFundPerRound","type":"uint128"},
 		{"name":"entryStake","type":"uint128"},
-		{"name":"maxSnakes","type":"uint16"},
-		{"name":"maxLadders","type":"uint16"},
+		{"name":"maxRedBeams","type":"uint16"},
+		{"name":"maxBlueBeams","type":"uint16"},
 		{"name":"playerRound","type":"map(address,uint64)"},
 		{"name":"roundPlayers","type":"map(uint64,address[])"},
 		{"components":[{"name":"expiresAt","type":"uint64"},{"components":[{"components":[{"name":"cell","type":"uint16"},{"components":[{"name":"x","type":"uint16"},{"name":"y","type":"uint16"}],"name":"coordinate","type":"tuple"}],"name":"from","type":"tuple"},{"components":[{"name":"cell","type":"uint16"},{"components":[{"name":"x","type":"uint16"},{"name":"y","type":"uint16"}],"name":"coordinate","type":"tuple"}],"name":"to","type":"tuple"}],"name":"playerSteps","type":"map(address,tuple[])"}],"name":"roundMoves","type":"map(uint64,tuple)"},
