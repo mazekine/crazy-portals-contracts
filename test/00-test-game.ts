@@ -322,6 +322,8 @@ describe("Test Game", async function () {
 */
 
             let winner: Address;
+            let deployerBalance = +(await locklift.provider.getBalance(deployer));
+            let opponentBalance = +(await locklift.provider.getBalance(opponent));
 
             while(true) {
                 stepsCounter++;
@@ -401,8 +403,14 @@ describe("Test Game", async function () {
             let winnerBalanceAfterClaim = +(await locklift.provider.getBalance(winner));
             let prize = winnerBalanceAfterClaim - winnerBalanceBeforeClaim;
 
-            console.log(nTabulator + "Received prize of " + locklift.utils.fromNano(prize) + " EVER");
+            console.log(nTabulator + "Received prize of " + locklift.utils.fromNano(round.round!.prizeFund) + " EVER");
             console.log(tabulator + "Game balance: " + locklift.utils.fromNano(await locklift.provider.getBalance(game.address)) + " EVER\n");
+
+            let deployerSpent = deployerBalance - +(await locklift.provider.getBalance(deployer));
+            let opponentSpent = opponentBalance - +(await locklift.provider.getBalance(opponent));
+
+            console.log(tabulator + "Deployer spent: " + locklift.utils.fromNano(deployerSpent));
+            console.log(tabulator + "Opponent spent: " + locklift.utils.fromNano(opponentSpent) + "\n");
 
             expect(prize).to.be.greaterThanOrEqual(+round.round!!.prizeFund - +locklift.utils.toNano(1), "Incorrect prize received");
         });
