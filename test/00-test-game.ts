@@ -74,8 +74,8 @@ describe("Test Game", async function () {
                 .methods
                 .generateBoard({
                     _seed: "31071986",
-                    _maxSnakes: 6,
-                    _maxLadders: 6
+                    _maxSnakes: 8,
+                    _maxLadders: 0
                 })
                 .send({
                     from: deployer,
