@@ -26,7 +26,7 @@ interface IGame {
         uint64      validUntil;
         uint64      moveDuration;
         RoundStatus status;
-        uint16       maxPlayers;
+        uint16      maxPlayers;
         uint128     entryStake;
         uint128     prizeFund;
         bool        prizeClaimed;

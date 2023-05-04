@@ -71,7 +71,7 @@ describe("Test Game", async function () {
             expect(boardGeneratedTx.traceTree).has.error(3009);
 
             const SNAKES = 8;
-            const LADDERS = 0;
+            const LADDERS = 8;
 
             boardGeneratedTx = await locklift.tracing.trace(game
                 .methods
@@ -403,12 +403,11 @@ describe("Test Game", async function () {
             expect(claimTx.traceTree).to.not.have.error();
 
             let winnerBalanceAfterClaim = +(await locklift.provider.getBalance(winner));
-            //let prize = winnerBalanceAfterClaim - winnerBalanceBeforeClaim;
 
             console.log(nTabulator + "Received prize of " + locklift.utils.fromNano(round.round!.prizeFund) + " EVER");
             console.log(tabulator + "Game balance: " + locklift.utils.fromNano(await locklift.provider.getBalance(game.address)) + " EVER\n");
 
-            let winnerBalanceBeforeClaim = winner == deployer ? deployerBalance : opponentBalance;
+            let winnerBalanceBeforeClaim = (winner == deployer) ? deployerBalance : opponentBalance;
             let winnerSpent = winnerBalanceAfterClaim - winnerBalanceBeforeClaim - +round.round!.prizeFund;
 
             console.log(tabulator + "Winner spent: " + locklift.utils.fromNano(winnerSpent) + " EVER");

@@ -11,24 +11,28 @@ import "@broxus/contracts/contracts/libraries/MsgFlag.tsol";
 contract Game is IGame, Ownable, Cashback {
     uint64  public static nonce;
 
+    //  Default configurations
     uint64  private MAX_ROUND_DURATION_MS_DEFAULT = 30 * 60 * 1000; //  30 minutes
     uint64  private MOVE_DURATION_MS_DEFAULT  = 60_000;         //  1 minute
     uint128 private TX_STORAGE_FEE = 0.05 ever;
     uint128 private RAKE = 0.01 ever;
 
-    mapping(uint64 => Round) rounds;
+    //  Board settings
     uint16  public maxPlayers = 4;
     uint64  public maxRoundDurationMs = MAX_ROUND_DURATION_MS_DEFAULT;
     uint64  public maxMoveDurationMs = MOVE_DURATION_MS_DEFAULT;
+    bool    public boardInitialized;
+    uint16  public maxRedBeams;
+    uint16  public maxBlueBeams;
+    uint128 public prizeFundPerRound;
+    uint128 public entryStake;
+    uint    public seed;
+
+    //  Storage
+    mapping(uint64 => Round) rounds;
     Board   public board;
     Path[]  redBeams;
     Path[]  blueBeams;
-    bool    public boardInitialized;
-    uint    seed;
-    uint128 public prizeFundPerRound;
-    uint128 public entryStake;
-    uint16  public maxRedBeams;
-    uint16  public maxBlueBeams;
 
     mapping(address => uint64)       playerRound;
     mapping(uint64 => address[])     roundPlayers;
@@ -128,6 +132,7 @@ contract Game is IGame, Ownable, Cashback {
         //  TODO: on join round check that the previous one has finished or expired
         if(round.validUntil <= block.timestamp) {
             rounds[roundId].status = RoundStatus.Expired;
+            tvm.commit();
             revert(BaseErrorCodes.TOO_LATE);
         }
 
@@ -168,28 +173,26 @@ contract Game is IGame, Ownable, Cashback {
 
         move.playerSteps[player] = steps;
 
-        //roundMoves[roundId] = move; //  Do I need to leave it here?
-
         rnd.shuffle();
-        uint16 diceVal = rnd.next(6) + 1;   //  TEST: 5
+        uint16 diceVal = rnd.next(6) + 1;
 
         emit DiceRolled(player, dice);
 
         Location    curLocation;
         Location    prevLocation;
-        uint16      curCell = playerCell[player];  //  TEST: 0
-        uint16      newCell = curCell + diceVal;   //  TEST: 5
-        int16       boardOverflow = int16(board.columns) * int16(board.rows) - int16(newCell); // TEST: 100 - 5 = 95
+        uint16      curCell = playerCell[player];
+        uint16      newCell = curCell + diceVal;
+        int16       boardOverflow = int16(board.columns) * int16(board.rows) - int16(newCell);
         uint16      x;
         uint16      y;
 
-        prevLocation = Location(curCell, _getCoordinate(curCell));  // TEST: {0, {0, 0}}
-        curLocation  = Location(newCell, _getCoordinate(newCell));  // TEST: {5, {5, 1}}
+        prevLocation = Location(curCell, _getCoordinate(curCell));
+        curLocation  = Location(newCell, _getCoordinate(newCell));
 
-        if(boardOverflow < 0) { //  TEST: false
+        if(boardOverflow < 0) {
             newCell = uint16(int16(board.columns * board.rows) + boardOverflow);
             curLocation  = Location(newCell, _getCoordinate(newCell));
-        } else if (boardOverflow == 0) {    //  TEST: false
+        } else if (boardOverflow == 0) {
             //  Player has won
             rounds[roundId].status = RoundStatus.Finished;
             rounds[roundId].winner = player;
@@ -202,14 +205,14 @@ contract Game is IGame, Ownable, Cashback {
 
         move.playerSteps[player].push(Step(prevLocation, curLocation));
 
-        x = curLocation.coordinate.x;   //  TEST: 5
-        y = curLocation.coordinate.y;   //  TEST: 1
+        x = curLocation.coordinate.x;
+        y = curLocation.coordinate.y;
 
         bool flag;
         while(!flag) {
             (uint16 _x, uint16 _y) = _checkContinuation(player, x, y);
             if(_x == x && _y == y) {
-                flag = true;    //  TEST: true
+                flag = true;
             } else {
                 x = _x;
                 y = _y;
@@ -221,7 +224,7 @@ contract Game is IGame, Ownable, Cashback {
             }
         }
 
-        newCell = _getCell(x, y);   //  TEST: 5
+        newCell = _getCell(x, y);
         playerCell[player] = newCell;
         roundMoves[roundId] = move;
 
@@ -358,8 +361,8 @@ contract Game is IGame, Ownable, Cashback {
     }
 
     function _checkContinuation(address player, uint16 x, uint16 y) internal view returns (uint16 _x, uint16 _y) {
-        _x = x; //  TEST: 5
-        _y = y; //  TEST: 1
+        _x = x;
+        _y = y;
 
         for(Path redBeam : redBeams) {
             if(redBeam.from.x == x && redBeam.from.y == y) {
@@ -391,10 +394,10 @@ contract Game is IGame, Ownable, Cashback {
     function _getCoordinate(uint16 cell) private view returns (Coordinate) {
         if(cell == 0) return Coordinate(0, 0);
 
-        uint16 y = (cell - 1) / board.columns + 1;  //  TEST: (5 - 1) / 10 + 1 = 1
-        uint16 x = cell - (y - 1) * board.columns;  //  TEST: 5 - (1 - 1) * 10 = 5
+        uint16 y = (cell - 1) / board.columns + 1;
+        uint16 x = cell - (y - 1) * board.columns;
 
-        bool rtl = (y % 2 == 0);    //  TEST: false
+        bool rtl = (y % 2 == 0);
         if (rtl) {
             x = board.columns - x + 1;
         }
