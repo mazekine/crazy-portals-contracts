@@ -13,32 +13,34 @@ contract Game is IGame, Ownable, Cashback {
 
     //  Default configurations
     uint64  private MAX_ROUND_DURATION_MS_DEFAULT = 30 * 60 * 1000; //  30 minutes
-    uint64  private MOVE_DURATION_MS_DEFAULT  = 60_000;         //  1 minute
-    uint128 private TX_STORAGE_FEE = 0.05 ever;
-    uint128 private RAKE = 0.01 ever;
+    uint64  private MOVE_DURATION_MS_DEFAULT      =  1 * 60 * 1000; //  1 minute
+    uint128 private TX_STORAGE_FEE = 0.05 ever;                     //  Default estimation of storage fee
+    uint128 private RAKE = 0.01 ever;                               //  Default rake rate for a game
+    uint128 private PRIZE_FUND_PER_ROUND_DEFAULT = 1 ever;          //  Default prize fund per game
 
     //  Board settings
-    uint16  public maxPlayers = 4;
-    uint64  public maxRoundDurationMs = MAX_ROUND_DURATION_MS_DEFAULT;
-    uint64  public maxMoveDurationMs = MOVE_DURATION_MS_DEFAULT;
-    bool    public boardInitialized;
-    uint16  public maxRedBeams;
-    uint16  public maxBlueBeams;
-    uint128 public prizeFundPerRound;
-    uint128 public entryStake;
-    uint    public seed;
+    uint16  public maxPlayers = 4;                                      // Number of players in a round
+    uint64  public maxRoundDurationMs = MAX_ROUND_DURATION_MS_DEFAULT;  // Maximum round duration in milliseconds
+    uint64  public maxMoveDurationMs = MOVE_DURATION_MS_DEFAULT;        // Maximum time for a step within round, in milliseconds
+    bool    public boardInitialized;                                    // Indicates if the board was generated already
+    uint16  public maxRedBeams;                                         // Number of red portals to generate on board
+    uint16  public maxBlueBeams;                                        // Number of blue portals to generate on board
+    uint128 public prizeFundPerRound = PRIZE_FUND_PER_ROUND_DEFAULT;    // Prize fund setting per round
+    uint128 public entryStake;                                          // Entry stake setting per round
+    uint    public seed;                                                // Map seed used to generate the map
 
-    //  Storage
-    mapping(uint64 => Round) rounds;
-    Board   public board;
-    Path[]  redBeams;
-    Path[]  blueBeams;
+    //  Configuration storage
+    mapping(uint64 => Round) rounds;    //  The list of rounds
+    Board   public           board;     //  Board size
+    Path[]                   redBeams;  //  Red portals
+    Path[]                   blueBeams; //  Blue portals
 
-    mapping(address => uint64)       playerRound;
-    mapping(uint64 => address[])     roundPlayers;
-    mapping(uint64 => Move)          roundMoves;
-    mapping(address => uint16)        playerCell;
-    mapping(uint16 => optional(Path)) cells;
+    //  Rounds metadata
+    mapping(address => uint64)        playerRound;   // Active round for player
+    mapping(uint64 => address[])      roundPlayers;  // List of players in a round
+    mapping(uint64 => Move)           roundMoves;    // Latest round move steps
+    mapping(address => uint16)        playerCell;    // Location of player of current map
+    mapping(uint16 => optional(Path)) cells;         // Contains location of portals on map
 
     constructor(address owner, uint16 size) public {
         require((size % 2 == 0) || (size >= 6) || (size <= 16), BaseErrorCodes.NOT_ALLOWED);
@@ -110,9 +112,11 @@ contract Game is IGame, Ownable, Cashback {
         tvm.rawReserve(msg.value - TX_STORAGE_FEE - RAKE, 1);  //  Reserve everything except the message value less storage fee and rake value
 
         address player = msg.sender;
+
         //  Check if the round is linked to the player
         //  TODO: reset rounds after finish
         require(playerRound.exists(player), BaseErrorCodes.NOT_ALLOWED);
+
         //  Check if player was put on the board
         require(playerCell.exists(player), BaseErrorCodes.ITEM_NOT_FOUND);
 
@@ -294,6 +298,13 @@ contract Game is IGame, Ownable, Cashback {
         emit MaxRoundTimeMsUpdated(address(this), oldVal, maxRoundDurationMs);
     }
 
+    function setMaxMoveTimeMs(uint64 ms) external override onlyOwner reservable cashback {
+        uint64 oldVal = maxMoveDurationMs;
+        maxMoveDurationMs = ms;
+
+        emit MaxMoveTimeMsUpdated(address(this), oldVal, maxMoveDurationMs);
+    }
+
     function setPrizeFund(uint128 amount) external override onlyOwner reservable cashback {
         uint128 oldVal = prizeFundPerRound;
         prizeFundPerRound = amount;
@@ -347,7 +358,8 @@ contract Game is IGame, Ownable, Cashback {
 
         require(address(this).balance > round.prizeFund + Utils.CONTRACT_MIN_BALANCE + msg.value, BaseErrorCodes.NOT_ENOUGH_BALANCE);
 
-        tvm.rawReserve(round.prizeFund + msg.value - tx.storageFee, 12);    //  Reserve all but prize fund for this round and message value less storage fee
+        tvm.rawReserve(round.prizeFund + msg.value - TX_STORAGE_FEE, 12);    //  Hotfix until tx fee information appears on mainnet
+        //tvm.rawReserve(round.prizeFund + msg.value - tx.storageFee, 12);    //  Reserve all but prize fund for this round and message value less storage fee
 
         require(round.status == RoundStatus.Finished,    BaseErrorCodes.WRONG_STATE);
         require(round.winner == msg.sender,              BaseErrorCodes.NOT_ALLOWED);
@@ -449,6 +461,14 @@ contract Game is IGame, Ownable, Cashback {
             boardInitialized = true;
             emit BoardGenerated(board, redBeams, blueBeams);
         }
+    }
+
+    function _freezePrizeFund(uint64 roundId, uint128 fund) private {
+
+    }
+
+    function _unfreezePrizeFund(uint64 roundId) private {
+
     }
 
 }

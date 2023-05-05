@@ -99,6 +99,14 @@
 			]
 		},
 		{
+			"name": "setMaxMoveTimeMs",
+			"inputs": [
+				{"name":"ms","type":"uint64"}
+			],
+			"outputs": [
+			]
+		},
+		{
 			"name": "setPrizeFund",
 			"inputs": [
 				{"name":"amount","type":"uint128"}
@@ -189,19 +197,27 @@
 			]
 		},
 		{
-			"name": "board",
-			"inputs": [
-			],
-			"outputs": [
-				{"components":[{"name":"columns","type":"uint16"},{"name":"rows","type":"uint16"}],"name":"board","type":"tuple"}
-			]
-		},
-		{
 			"name": "boardInitialized",
 			"inputs": [
 			],
 			"outputs": [
 				{"name":"boardInitialized","type":"bool"}
+			]
+		},
+		{
+			"name": "maxRedBeams",
+			"inputs": [
+			],
+			"outputs": [
+				{"name":"maxRedBeams","type":"uint16"}
+			]
+		},
+		{
+			"name": "maxBlueBeams",
+			"inputs": [
+			],
+			"outputs": [
+				{"name":"maxBlueBeams","type":"uint16"}
 			]
 		},
 		{
@@ -221,19 +237,19 @@
 			]
 		},
 		{
-			"name": "maxRedBeams",
+			"name": "seed",
 			"inputs": [
 			],
 			"outputs": [
-				{"name":"maxRedBeams","type":"uint16"}
+				{"name":"seed","type":"uint256"}
 			]
 		},
 		{
-			"name": "maxBlueBeams",
+			"name": "board",
 			"inputs": [
 			],
 			"outputs": [
-				{"name":"maxBlueBeams","type":"uint16"}
+				{"components":[{"name":"columns","type":"uint16"},{"name":"rows","type":"uint16"}],"name":"board","type":"tuple"}
 			]
 		}
 	],
@@ -300,6 +316,16 @@
 		},
 		{
 			"name": "MaxRoundTimeMsUpdated",
+			"inputs": [
+				{"name":"board","type":"address"},
+				{"name":"oldValue","type":"uint64"},
+				{"name":"newValue","type":"uint64"}
+			],
+			"outputs": [
+			]
+		},
+		{
+			"name": "MaxMoveTimeMsUpdated",
 			"inputs": [
 				{"name":"board","type":"address"},
 				{"name":"oldValue","type":"uint64"},
@@ -381,19 +407,20 @@
 		{"name":"MOVE_DURATION_MS_DEFAULT","type":"uint64"},
 		{"name":"TX_STORAGE_FEE","type":"uint128"},
 		{"name":"RAKE","type":"uint128"},
-		{"components":[{"name":"id","type":"uint64"},{"name":"validUntil","type":"uint64"},{"name":"moveDuration","type":"uint64"},{"name":"status","type":"uint8"},{"name":"maxPlayers","type":"uint16"},{"name":"entryStake","type":"uint128"},{"name":"prizeFund","type":"uint128"},{"name":"prizeClaimed","type":"bool"},{"name":"winner","type":"address"}],"name":"rounds","type":"map(uint64,tuple)"},
+		{"name":"PRIZE_FUND_PER_ROUND_DEFAULT","type":"uint128"},
 		{"name":"maxPlayers","type":"uint16"},
 		{"name":"maxRoundDurationMs","type":"uint64"},
 		{"name":"maxMoveDurationMs","type":"uint64"},
+		{"name":"boardInitialized","type":"bool"},
+		{"name":"maxRedBeams","type":"uint16"},
+		{"name":"maxBlueBeams","type":"uint16"},
+		{"name":"prizeFundPerRound","type":"uint128"},
+		{"name":"entryStake","type":"uint128"},
+		{"name":"seed","type":"uint256"},
+		{"components":[{"name":"id","type":"uint64"},{"name":"validUntil","type":"uint64"},{"name":"moveDuration","type":"uint64"},{"name":"status","type":"uint8"},{"name":"maxPlayers","type":"uint16"},{"name":"entryStake","type":"uint128"},{"name":"prizeFund","type":"uint128"},{"name":"prizeClaimed","type":"bool"},{"name":"winner","type":"address"}],"name":"rounds","type":"map(uint64,tuple)"},
 		{"components":[{"name":"columns","type":"uint16"},{"name":"rows","type":"uint16"}],"name":"board","type":"tuple"},
 		{"components":[{"components":[{"name":"x","type":"uint16"},{"name":"y","type":"uint16"}],"name":"from","type":"tuple"},{"components":[{"name":"x","type":"uint16"},{"name":"y","type":"uint16"}],"name":"to","type":"tuple"},{"name":"type_","type":"uint8"}],"name":"redBeams","type":"tuple[]"},
 		{"components":[{"components":[{"name":"x","type":"uint16"},{"name":"y","type":"uint16"}],"name":"from","type":"tuple"},{"components":[{"name":"x","type":"uint16"},{"name":"y","type":"uint16"}],"name":"to","type":"tuple"},{"name":"type_","type":"uint8"}],"name":"blueBeams","type":"tuple[]"},
-		{"name":"boardInitialized","type":"bool"},
-		{"name":"seed","type":"uint256"},
-		{"name":"prizeFundPerRound","type":"uint128"},
-		{"name":"entryStake","type":"uint128"},
-		{"name":"maxRedBeams","type":"uint16"},
-		{"name":"maxBlueBeams","type":"uint16"},
 		{"name":"playerRound","type":"map(address,uint64)"},
 		{"name":"roundPlayers","type":"map(uint64,address[])"},
 		{"components":[{"name":"expiresAt","type":"uint64"},{"components":[{"components":[{"name":"cell","type":"uint16"},{"components":[{"name":"x","type":"uint16"},{"name":"y","type":"uint16"}],"name":"coordinate","type":"tuple"}],"name":"from","type":"tuple"},{"components":[{"name":"cell","type":"uint16"},{"components":[{"name":"x","type":"uint16"},{"name":"y","type":"uint16"}],"name":"coordinate","type":"tuple"}],"name":"to","type":"tuple"}],"name":"playerSteps","type":"map(address,tuple[])"}],"name":"roundMoves","type":"map(uint64,tuple)"},

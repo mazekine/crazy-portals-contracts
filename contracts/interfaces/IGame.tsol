@@ -60,6 +60,7 @@ interface IGame {
     event EntryStakeUpdated(address board, uint128 oldValue, uint128 newValue);
     event PrizeFundUpdated(address board, uint128 oldValue, uint128 newValue);
     event MaxRoundTimeMsUpdated(address board, uint64 oldValue, uint64 newValue);
+    event MaxMoveTimeMsUpdated(address board, uint64 oldValue, uint64 newValue);
     event MaxPlayersUpdated(address board, uint16 oldValue, uint16 newValue);
 
     event RoundCreated(address board, uint64 roundId);
@@ -81,6 +82,7 @@ interface IGame {
 
     function setMaxPlayers(uint16 qty) external;
     function setMaxRoundTimeMs(uint64 ms) external;
+    function setMaxMoveTimeMs(uint64 ms) external;
     function setPrizeFund(uint128 amount) external;
     function setEntryStake(uint128 amount) external;
 }
