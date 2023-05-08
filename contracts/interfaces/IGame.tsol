@@ -31,6 +31,7 @@ interface IGame {
         uint128     prizeFund;
         bool        prizeClaimed;
         address     winner;
+        uint64      autoStartTimestamp;
     }
 
     struct Board {
@@ -53,6 +54,18 @@ interface IGame {
         Location to;
     }
 
+    struct RoundTreasury {
+        uint128 prize;
+        uint128 entranceFee;
+        mapping(address => uint128) playerJackpot;
+    }
+
+    struct BoardTreasury {
+        uint128 rakes;
+        uint128 jackpot;
+        mapping(uint64 => RoundTreasury) roundTreasury;
+    }
+
     event DiceRolled(address player, uint16 dice);
     event PathFound(address player, Path path);
     event BoardGenerated(Board board, Path[] redBeams, Path[] blueBeams);
@@ -61,6 +74,7 @@ interface IGame {
     event PrizeFundUpdated(address board, uint128 oldValue, uint128 newValue);
     event MaxRoundTimeMsUpdated(address board, uint64 oldValue, uint64 newValue);
     event MaxMoveTimeMsUpdated(address board, uint64 oldValue, uint64 newValue);
+    event RoundAutostartMsUpdated(address board, uint64 oldValue, uint64 newValue);
     event MaxPlayersUpdated(address board, uint16 oldValue, uint16 newValue);
 
     event RoundCreated(address board, uint64 roundId);
@@ -85,4 +99,5 @@ interface IGame {
     function setMaxMoveTimeMs(uint64 ms) external;
     function setPrizeFund(uint128 amount) external;
     function setEntryStake(uint128 amount) external;
+    function setAutostartMs(uint64 ms) external;
 }

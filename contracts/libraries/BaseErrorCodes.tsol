@@ -62,6 +62,7 @@ library BaseErrorCodes {
     //  Payment errors
     uint16 constant TOKEN_PAYMENT_EXPECTED                          = 8000;
     uint16 constant COIN_PAYMENT_EXPECTED                           = 8001;
+    uint16 constant NOTHING_TO_PAY                                  = 8002;
 
     //  Upgrade errors
     uint16 constant NEWER_VERSION_DEPLOYED                          = 9000;
