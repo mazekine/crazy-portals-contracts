@@ -271,6 +271,7 @@ contract Game is IGame, Ownable, Cashback {
         );
 
         rounds[roundId] = newRound;
+        boardTreasury.roundTreasury[roundId] = RoundTreasury(prizeFundPerRound, 0, emptyMap);
 
         emit RoundCreated(address(this), roundId);
 
@@ -340,7 +341,7 @@ contract Game is IGame, Ownable, Cashback {
     returns (uint16 dice, Coordinate newPosition) {
         require(boardInitialized, BaseErrorCodes.TOO_EARLY);
 
-        tvm.rawReserve(msg.value - TX_STORAGE_FEE - RAKE_DEFAULT, 1);  //  Reserve everything except the message value less storage fee and rake value
+        tvm.rawReserve(msg.value - TX_STORAGE_FEE, 1);  //  Reserve everything except the message value less storage fee and rake value
 
         address player = msg.sender;
 
@@ -364,7 +365,6 @@ contract Game is IGame, Ownable, Cashback {
         require(round.status != RoundStatus.Finished, BaseErrorCodes.FINISHED);
 
         //  Check that the round is not expired
-        //  TODO: on join round check that the previous one has finished or expired
         if(round.validUntil <= block.timestamp) {
             rounds[roundId].status = RoundStatus.Expired;
             tvm.commit();
@@ -382,6 +382,14 @@ contract Game is IGame, Ownable, Cashback {
 
             round.status = RoundStatus.Active;
         }
+
+        //  Take rake and jackpot
+        tvm.rawReserve(round.rake, 0);
+
+        uint128 jackpotAccrual = math.muldiv(round.rake, round.rakeToJackpotRate, 100);
+        uint128 rakeRemainder = round.rake - jackpotAccrual;
+        boardTreasury.rakes += rakeRemainder;
+        boardTreasury.jackpot += jackpotAccrual;
 
         mapping(address => Step[]) playersMoved;
         Step[]  steps;
@@ -412,6 +420,8 @@ contract Game is IGame, Ownable, Cashback {
         uint16 diceVal = rnd.next(6) + 1;
 
         emit DiceRolled(player, dice);
+
+        //  TODO: Add jackpot drawing
 
         Location    curLocation;
         Location    prevLocation;
