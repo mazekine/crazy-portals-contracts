@@ -21,17 +21,30 @@ interface IGame {
         NotStarted, Ready, Active, Finished, Expired
     }
 
+    /**
+        Round information container
+    */
     struct Round {
-        uint64      id;
-        uint64      validUntil;
-        uint64      moveDuration;
-        RoundStatus status;
-        uint16      maxPlayers;
-        uint128     entryStake;
-        uint128     prizeFund;
-        bool        prizeClaimed;
-        address     winner;
-        uint64      autoStartTimestamp;
+        //  Basic information
+        uint64              id;
+        RoundStatus         status;
+        address             winner;
+
+        //  General settings
+        uint16              maxPlayers;
+        bool                giveUpAllowed;
+
+        //  Timings
+        uint64              validUntil;
+        uint64              moveDuration;
+        optional(uint64)    autoStartTimestamp;
+
+        //  Treasury
+        uint128             entryStake;
+        uint128             prizeFund;
+        bool                prizeClaimed;
+        uint128             rake;
+        uint8               rakeToJackpotRate;
     }
 
     struct Board {
@@ -66,22 +79,34 @@ interface IGame {
         mapping(uint64 => RoundTreasury) roundTreasury;
     }
 
+    //  Game flow events
+    event RoundCreated(address board, uint64 roundId);
+    event RoundFinished(address board, uint64 roundId, address winner);
     event DiceRolled(address player, uint16 dice);
     event PathFound(address player, Path path);
-    event BoardGenerated(Board board, Path[] redBeams, Path[] blueBeams);
 
+    //  Player events
+    event RoundJoined(address board, uint64 roundId, address player);
+    event PlayerMoved(address board, uint64 round, address player, Location from, Location to);
+    event PlayerWon(address board, uint64 round, address player, uint128 amount);
+    event PlayerRemovedFromRound(address board, uint64 roundId, address player);
+
+    //  Board configuration events
+    event BoardGenerated(Board board, Path[] redBeams, Path[] blueBeams);
     event EntryStakeUpdated(address board, uint128 oldValue, uint128 newValue);
+    event RakeUpdated(address board, uint128 oldValue, uint128 newValue);
+    event JackpotRateUpdated(address board, uint8 oldValue, uint8 newValue);
     event PrizeFundUpdated(address board, uint128 oldValue, uint128 newValue);
     event MaxRoundTimeMsUpdated(address board, uint64 oldValue, uint64 newValue);
     event MaxMoveTimeMsUpdated(address board, uint64 oldValue, uint64 newValue);
-    event RoundAutostartMsUpdated(address board, uint64 oldValue, uint64 newValue);
+    event RoundAutostartMsUpdated(address board, optional(uint64) oldValue, optional(uint64) newValue);
     event MaxPlayersUpdated(address board, uint16 oldValue, uint16 newValue);
+    event PlayerGiveUpAllowedUpdated(address board, bool oldValue, bool newValue);
 
-    event RoundCreated(address board, uint64 roundId);
-    event RoundJoined(address board, uint64 roundId, address player);
-    event PlayerMoved(address board, uint64 round, address player, Location from, Location to);
-    event RoundFinished(address board, uint64 roundId, address winner);
-    event PrizeClaimed(address board, uint64 roundId, address player);
+    //  Financial events
+    event PrizeClaimed(address board, uint64 roundId, address player, uint128 amount);
+    event JackpotDrawn(address board, uint64 roundId, address player, uint128 amount);
+    event JackpotClaimed(address board, uint64 roundId, address player, uint128 amount);
 
     function generateBoard(uint seed, uint16 maxRedBeams, uint16 maxBlueBeams) external;
     function getBoard() external view responsible returns (Board board, Path[] redBeams, Path[] blueBeams);
@@ -99,5 +124,8 @@ interface IGame {
     function setMaxMoveTimeMs(uint64 ms) external;
     function setPrizeFund(uint128 amount) external;
     function setEntryStake(uint128 amount) external;
-    function setAutostartMs(uint64 ms) external;
+    function setAutostartMs(optional(uint64) ms) external;
+    function setPlayerGiveUpAllowed(bool allowed) external;
+    function setRake(uint128 amount) external;
+    function setJackpotRate(uint8 rate) external;
 }

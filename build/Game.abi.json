@@ -63,12 +63,44 @@
 			]
 		},
 		{
+			"name": "setRake",
+			"inputs": [
+				{"name":"amount","type":"uint128"}
+			],
+			"outputs": [
+			]
+		},
+		{
+			"name": "setJackpotRate",
+			"inputs": [
+				{"name":"rate","type":"uint8"}
+			],
+			"outputs": [
+			]
+		},
+		{
+			"name": "setAutostartMs",
+			"inputs": [
+				{"name":"ms","type":"optional(uint64)"}
+			],
+			"outputs": [
+			]
+		},
+		{
+			"name": "setPlayerGiveUpAllowed",
+			"inputs": [
+				{"name":"allowed","type":"bool"}
+			],
+			"outputs": [
+			]
+		},
+		{
 			"name": "createRound",
 			"inputs": [
 				{"name":"answerId","type":"uint32"}
 			],
 			"outputs": [
-				{"components":[{"name":"id","type":"uint64"},{"name":"validUntil","type":"uint64"},{"name":"moveDuration","type":"uint64"},{"name":"status","type":"uint8"},{"name":"maxPlayers","type":"uint16"},{"name":"entryStake","type":"uint128"},{"name":"prizeFund","type":"uint128"},{"name":"prizeClaimed","type":"bool"},{"name":"winner","type":"address"}],"name":"round","type":"tuple"}
+				{"components":[{"name":"id","type":"uint64"},{"name":"status","type":"uint8"},{"name":"winner","type":"address"},{"name":"maxPlayers","type":"uint16"},{"name":"giveUpAllowed","type":"bool"},{"name":"validUntil","type":"uint64"},{"name":"moveDuration","type":"uint64"},{"name":"autoStartTimestamp","type":"optional(uint64)"},{"name":"entryStake","type":"uint128"},{"name":"prizeFund","type":"uint128"},{"name":"prizeClaimed","type":"bool"},{"name":"rake","type":"uint128"},{"name":"rakeToJackpotRate","type":"uint8"}],"name":"round","type":"tuple"}
 			]
 		},
 		{
@@ -127,7 +159,7 @@
 				{"name":"roundId","type":"uint64"}
 			],
 			"outputs": [
-				{"components":[{"name":"id","type":"uint64"},{"name":"validUntil","type":"uint64"},{"name":"moveDuration","type":"uint64"},{"name":"status","type":"uint8"},{"name":"maxPlayers","type":"uint16"},{"name":"entryStake","type":"uint128"},{"name":"prizeFund","type":"uint128"},{"name":"prizeClaimed","type":"bool"},{"name":"winner","type":"address"}],"name":"round","type":"optional(tuple)"}
+				{"components":[{"name":"id","type":"uint64"},{"name":"status","type":"uint8"},{"name":"winner","type":"address"},{"name":"maxPlayers","type":"uint16"},{"name":"giveUpAllowed","type":"bool"},{"name":"validUntil","type":"uint64"},{"name":"moveDuration","type":"uint64"},{"name":"autoStartTimestamp","type":"optional(uint64)"},{"name":"entryStake","type":"uint128"},{"name":"prizeFund","type":"uint128"},{"name":"prizeClaimed","type":"bool"},{"name":"rake","type":"uint128"},{"name":"rakeToJackpotRate","type":"uint8"}],"name":"round","type":"optional(tuple)"}
 			]
 		},
 		{
@@ -137,7 +169,7 @@
 				{"name":"status","type":"optional(uint8)"}
 			],
 			"outputs": [
-				{"components":[{"name":"id","type":"uint64"},{"name":"validUntil","type":"uint64"},{"name":"moveDuration","type":"uint64"},{"name":"status","type":"uint8"},{"name":"maxPlayers","type":"uint16"},{"name":"entryStake","type":"uint128"},{"name":"prizeFund","type":"uint128"},{"name":"prizeClaimed","type":"bool"},{"name":"winner","type":"address"}],"name":"_rounds","type":"tuple[]"}
+				{"components":[{"name":"id","type":"uint64"},{"name":"status","type":"uint8"},{"name":"winner","type":"address"},{"name":"maxPlayers","type":"uint16"},{"name":"giveUpAllowed","type":"bool"},{"name":"validUntil","type":"uint64"},{"name":"moveDuration","type":"uint64"},{"name":"autoStartTimestamp","type":"optional(uint64)"},{"name":"entryStake","type":"uint128"},{"name":"prizeFund","type":"uint128"},{"name":"prizeClaimed","type":"bool"},{"name":"rake","type":"uint128"},{"name":"rakeToJackpotRate","type":"uint8"}],"name":"_rounds","type":"tuple[]"}
 			]
 		},
 		{
@@ -146,7 +178,6 @@
 				{"name":"roundId","type":"uint64"}
 			],
 			"outputs": [
-				{"components":[{"name":"prize","type":"uint128"},{"name":"entranceFee","type":"uint128"},{"name":"playerJackpot","type":"map(address,uint128)"}],"name":"treasury","type":"tuple"},
 				{"name":"totalReserves","type":"uint128"}
 			]
 		},
@@ -239,6 +270,14 @@
 			]
 		},
 		{
+			"name": "roundAutostartMs",
+			"inputs": [
+			],
+			"outputs": [
+				{"name":"roundAutostartMs","type":"optional(uint64)"}
+			]
+		},
+		{
 			"name": "prizeFundPerRound",
 			"inputs": [
 			],
@@ -260,6 +299,30 @@
 			],
 			"outputs": [
 				{"name":"entryStake","type":"uint128"}
+			]
+		},
+		{
+			"name": "giveUpAllowed",
+			"inputs": [
+			],
+			"outputs": [
+				{"name":"giveUpAllowed","type":"bool"}
+			]
+		},
+		{
+			"name": "rake",
+			"inputs": [
+			],
+			"outputs": [
+				{"name":"rake","type":"uint128"}
+			]
+		},
+		{
+			"name": "jackpotRate",
+			"inputs": [
+			],
+			"outputs": [
+				{"name":"jackpotRate","type":"uint8"}
 			]
 		},
 		{
@@ -285,6 +348,25 @@
 			]
 		},
 		{
+			"name": "RoundCreated",
+			"inputs": [
+				{"name":"board","type":"address"},
+				{"name":"roundId","type":"uint64"}
+			],
+			"outputs": [
+			]
+		},
+		{
+			"name": "RoundFinished",
+			"inputs": [
+				{"name":"board","type":"address"},
+				{"name":"roundId","type":"uint64"},
+				{"name":"winner","type":"address"}
+			],
+			"outputs": [
+			]
+		},
+		{
 			"name": "DiceRolled",
 			"inputs": [
 				{"name":"player","type":"address"},
@@ -298,6 +380,49 @@
 			"inputs": [
 				{"name":"player","type":"address"},
 				{"components":[{"components":[{"name":"x","type":"uint16"},{"name":"y","type":"uint16"}],"name":"from","type":"tuple"},{"components":[{"name":"x","type":"uint16"},{"name":"y","type":"uint16"}],"name":"to","type":"tuple"},{"name":"type_","type":"uint8"}],"name":"path","type":"tuple"}
+			],
+			"outputs": [
+			]
+		},
+		{
+			"name": "RoundJoined",
+			"inputs": [
+				{"name":"board","type":"address"},
+				{"name":"roundId","type":"uint64"},
+				{"name":"player","type":"address"}
+			],
+			"outputs": [
+			]
+		},
+		{
+			"name": "PlayerMoved",
+			"inputs": [
+				{"name":"board","type":"address"},
+				{"name":"round","type":"uint64"},
+				{"name":"player","type":"address"},
+				{"components":[{"name":"cell","type":"uint16"},{"components":[{"name":"x","type":"uint16"},{"name":"y","type":"uint16"}],"name":"coordinate","type":"tuple"}],"name":"from","type":"tuple"},
+				{"components":[{"name":"cell","type":"uint16"},{"components":[{"name":"x","type":"uint16"},{"name":"y","type":"uint16"}],"name":"coordinate","type":"tuple"}],"name":"to","type":"tuple"}
+			],
+			"outputs": [
+			]
+		},
+		{
+			"name": "PlayerWon",
+			"inputs": [
+				{"name":"board","type":"address"},
+				{"name":"round","type":"uint64"},
+				{"name":"player","type":"address"},
+				{"name":"amount","type":"uint128"}
+			],
+			"outputs": [
+			]
+		},
+		{
+			"name": "PlayerRemovedFromRound",
+			"inputs": [
+				{"name":"board","type":"address"},
+				{"name":"roundId","type":"uint64"},
+				{"name":"player","type":"address"}
 			],
 			"outputs": [
 			]
@@ -318,6 +443,26 @@
 				{"name":"board","type":"address"},
 				{"name":"oldValue","type":"uint128"},
 				{"name":"newValue","type":"uint128"}
+			],
+			"outputs": [
+			]
+		},
+		{
+			"name": "RakeUpdated",
+			"inputs": [
+				{"name":"board","type":"address"},
+				{"name":"oldValue","type":"uint128"},
+				{"name":"newValue","type":"uint128"}
+			],
+			"outputs": [
+			]
+		},
+		{
+			"name": "JackpotRateUpdated",
+			"inputs": [
+				{"name":"board","type":"address"},
+				{"name":"oldValue","type":"uint8"},
+				{"name":"newValue","type":"uint8"}
 			],
 			"outputs": [
 			]
@@ -353,6 +498,16 @@
 			]
 		},
 		{
+			"name": "RoundAutostartMsUpdated",
+			"inputs": [
+				{"name":"board","type":"address"},
+				{"name":"oldValue","type":"optional(uint64)"},
+				{"name":"newValue","type":"optional(uint64)"}
+			],
+			"outputs": [
+			]
+		},
+		{
 			"name": "MaxPlayersUpdated",
 			"inputs": [
 				{"name":"board","type":"address"},
@@ -363,42 +518,11 @@
 			]
 		},
 		{
-			"name": "RoundCreated",
+			"name": "PlayerGiveUpAllowedUpdated",
 			"inputs": [
 				{"name":"board","type":"address"},
-				{"name":"roundId","type":"uint64"}
-			],
-			"outputs": [
-			]
-		},
-		{
-			"name": "RoundJoined",
-			"inputs": [
-				{"name":"board","type":"address"},
-				{"name":"roundId","type":"uint64"},
-				{"name":"player","type":"address"}
-			],
-			"outputs": [
-			]
-		},
-		{
-			"name": "PlayerMoved",
-			"inputs": [
-				{"name":"board","type":"address"},
-				{"name":"round","type":"uint64"},
-				{"name":"player","type":"address"},
-				{"components":[{"name":"cell","type":"uint16"},{"components":[{"name":"x","type":"uint16"},{"name":"y","type":"uint16"}],"name":"coordinate","type":"tuple"}],"name":"from","type":"tuple"},
-				{"components":[{"name":"cell","type":"uint16"},{"components":[{"name":"x","type":"uint16"},{"name":"y","type":"uint16"}],"name":"coordinate","type":"tuple"}],"name":"to","type":"tuple"}
-			],
-			"outputs": [
-			]
-		},
-		{
-			"name": "RoundFinished",
-			"inputs": [
-				{"name":"board","type":"address"},
-				{"name":"roundId","type":"uint64"},
-				{"name":"winner","type":"address"}
+				{"name":"oldValue","type":"bool"},
+				{"name":"newValue","type":"bool"}
 			],
 			"outputs": [
 			]
@@ -408,7 +532,30 @@
 			"inputs": [
 				{"name":"board","type":"address"},
 				{"name":"roundId","type":"uint64"},
-				{"name":"player","type":"address"}
+				{"name":"player","type":"address"},
+				{"name":"amount","type":"uint128"}
+			],
+			"outputs": [
+			]
+		},
+		{
+			"name": "JackpotDrawn",
+			"inputs": [
+				{"name":"board","type":"address"},
+				{"name":"roundId","type":"uint64"},
+				{"name":"player","type":"address"},
+				{"name":"amount","type":"uint128"}
+			],
+			"outputs": [
+			]
+		},
+		{
+			"name": "JackpotClaimed",
+			"inputs": [
+				{"name":"board","type":"address"},
+				{"name":"roundId","type":"uint64"},
+				{"name":"player","type":"address"},
+				{"name":"amount","type":"uint128"}
 			],
 			"outputs": [
 			]
@@ -421,21 +568,20 @@
 		{"name":"_owner","type":"address"},
 		{"name":"_initialized","type":"bool"},
 		{"name":"nonce","type":"uint64"},
-		{"name":"MAX_ROUND_DURATION_MS_DEFAULT","type":"uint64"},
-		{"name":"MOVE_DURATION_MS_DEFAULT","type":"uint64"},
-		{"name":"TX_STORAGE_FEE","type":"uint128"},
-		{"name":"RAKE","type":"uint128"},
-		{"name":"PRIZE_FUND_PER_ROUND_DEFAULT","type":"uint128"},
 		{"name":"seed","type":"uint256"},
 		{"name":"blueBeamsNumber","type":"uint16"},
 		{"name":"redBeamsNumber","type":"uint16"},
 		{"name":"boardInitialized","type":"bool"},
 		{"name":"maxRoundDurationMs","type":"uint64"},
 		{"name":"maxMoveDurationMs","type":"uint64"},
+		{"name":"roundAutostartMs","type":"optional(uint64)"},
 		{"name":"prizeFundPerRound","type":"uint128"},
 		{"name":"maxPlayers","type":"uint16"},
 		{"name":"entryStake","type":"uint128"},
-		{"components":[{"name":"id","type":"uint64"},{"name":"validUntil","type":"uint64"},{"name":"moveDuration","type":"uint64"},{"name":"status","type":"uint8"},{"name":"maxPlayers","type":"uint16"},{"name":"entryStake","type":"uint128"},{"name":"prizeFund","type":"uint128"},{"name":"prizeClaimed","type":"bool"},{"name":"winner","type":"address"}],"name":"rounds","type":"map(uint64,tuple)"},
+		{"name":"giveUpAllowed","type":"bool"},
+		{"name":"rake","type":"uint128"},
+		{"name":"jackpotRate","type":"uint8"},
+		{"components":[{"name":"id","type":"uint64"},{"name":"status","type":"uint8"},{"name":"winner","type":"address"},{"name":"maxPlayers","type":"uint16"},{"name":"giveUpAllowed","type":"bool"},{"name":"validUntil","type":"uint64"},{"name":"moveDuration","type":"uint64"},{"name":"autoStartTimestamp","type":"optional(uint64)"},{"name":"entryStake","type":"uint128"},{"name":"prizeFund","type":"uint128"},{"name":"prizeClaimed","type":"bool"},{"name":"rake","type":"uint128"},{"name":"rakeToJackpotRate","type":"uint8"}],"name":"rounds","type":"map(uint64,tuple)"},
 		{"components":[{"name":"columns","type":"uint16"},{"name":"rows","type":"uint16"}],"name":"board","type":"tuple"},
 		{"components":[{"components":[{"name":"x","type":"uint16"},{"name":"y","type":"uint16"}],"name":"from","type":"tuple"},{"components":[{"name":"x","type":"uint16"},{"name":"y","type":"uint16"}],"name":"to","type":"tuple"},{"name":"type_","type":"uint8"}],"name":"redBeams","type":"tuple[]"},
 		{"components":[{"components":[{"name":"x","type":"uint16"},{"name":"y","type":"uint16"}],"name":"from","type":"tuple"},{"components":[{"name":"x","type":"uint16"},{"name":"y","type":"uint16"}],"name":"to","type":"tuple"},{"name":"type_","type":"uint8"}],"name":"blueBeams","type":"tuple[]"},

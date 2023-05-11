@@ -12,12 +12,14 @@ contract Game is IGame, Ownable, Cashback {
     uint64  public static nonce;
 
     //  Default configurations
-    uint64  private MAX_ROUND_DURATION_MS_DEFAULT = 30 * 60 * 1000; //  30 minutes
-    uint64  private MOVE_DURATION_MS_DEFAULT      =  1 * 60 * 1000; //  1 minute
-    uint64  private ROUND_AUTOSTART_MS_DEFAULT    =  5 * 60 * 1000; //  5 minutes
-    uint128 private TX_STORAGE_FEE = 0.05 ever;                     //  Default estimation of storage fee
-    uint128 private RAKE = 0.01 ever;                               //  Default rake rate for a game
-    uint128 private PRIZE_FUND_PER_ROUND_DEFAULT = 1 ever;          //  Default prize fund per game
+    uint64  private constant MAX_ROUND_DURATION_MS_DEFAULT = 30 * 60 * 1000; //  30 minutes
+    uint64  private constant MOVE_DURATION_MS_DEFAULT      =  1 * 60 * 1000; //  1 minute
+    uint64  private constant ROUND_AUTOSTART_MS_DEFAULT    =  5 * 60 * 1000; //  5 minutes
+    uint128 private constant TX_STORAGE_FEE = 0.05 ever;                     //  Default estimation of storage fee
+    uint128 private constant RAKE_DEFAULT = 0.01 ever;                       //  Default rake rate for a game
+    uint8   private constant JACKPOT_RATE_DEFAULT = 0;                       //  Default jackpot rate
+    uint128 private constant PRIZE_FUND_PER_ROUND_DEFAULT = 1 ever;          //  Default prize fund per game
+    uint128 private constant MIN_PLAYERS = 2;                                //  Minimum number of players to attend the game
 
     //  Board settings
     uint    public seed;                                                // Map seed used to generate the map
@@ -30,6 +32,9 @@ contract Game is IGame, Ownable, Cashback {
     uint128 public prizeFundPerRound = PRIZE_FUND_PER_ROUND_DEFAULT;    // Prize fund setting per round
     uint16  public maxPlayers = 4;                                      // Number of players in a round
     uint128 public entryStake;                                          // Entry stake setting per round
+    bool    public giveUpAllowed = false;                               // Indicates if a player can give up the round before its end
+    uint128 public rake = RAKE_DEFAULT;                                 // Amount paid to the board on each roll
+    uint8   public jackpotRate = JACKPOT_RATE_DEFAULT;                  // Share of rake that is saved to the jackpot fund
 
     //  Configuration storage
     mapping(uint64 => Round) rounds;    //  The list of rounds
@@ -179,13 +184,51 @@ contract Game is IGame, Ownable, Cashback {
     }
 
     /**
-        Sets the period in milliseconds after the creation of the round after which it will start even if it hasn't obtained enough players
+        Sets the value of rake that will be paid to the board on each roll
+
+        @param  amount  Value of the rake
     */
+    function setRake(uint128 amount) external override onlyOwner reservable cashback {
+        uint128 oldVal = rake;
+        rake = amount;
+
+        emit RakeUpdated(address(this), oldVal, rake);
+    }
+
+    /**
+        Sets how much of the rake will be directed to the jackpot fund (in percent).
+
+        @param  rate    Value between 0-100
+    */
+    function setJackpotRate(uint8 rate) external override onlyOwner reservable cashback {
+        require(rate >= 0 && rate <=100, BaseErrorCodes.WRONG_CONFIGURATION);
+
+        uint8 oldVal = jackpotRate;
+        jackpotRate = rate;
+
+        emit JackpotRateUpdated(address(this), oldVal, jackpotRate);
+    }
+
+    /**
+            Sets the period in milliseconds after the creation of the round after which it will start even if it hasn't obtained enough players
+        */
     function setAutostartMs(optional(uint64) ms) external override onlyOwner reservable cashback {
-        uint64 oldVal = roundAutostartMs;
+        optional(uint64) oldVal = roundAutostartMs;
         roundAutostartMs = ms;
 
         emit RoundAutostartMsUpdated(address(this), oldVal, roundAutostartMs);
+    }
+
+    /**
+        Turns on or off the possibility for a player to give up the round before its end
+
+        @param  allowed True to turn the opportunity on, false to switch it off
+    */
+    function setPlayerGiveUpAllowed(bool allowed) external override onlyOwner reservable cashback {
+        bool oldVal = giveUpAllowed;
+        giveUpAllowed = allowed;
+
+        emit PlayerGiveUpAllowedUpdated(address(this), oldVal, giveUpAllowed);
     }
 
     /**
@@ -203,17 +246,28 @@ contract Game is IGame, Ownable, Cashback {
         uint64 roundId = block.timestamp;
         require(!rounds.exists(roundId), BaseErrorCodes.ITEM_EXISTS);
 
+        optional(uint64) autostart = roundAutostartMs;
+        if(autostart.hasValue()) {
+            autostart = autostart.get() + roundId;
+        }
+
         Round newRound = Round(
             roundId,
+            RoundStatus.NotStarted,
+            address(0),
+
+            maxPlayers,
+            false,
+
             roundId + maxRoundDurationMs,
             maxMoveDurationMs,
-            RoundStatus.NotStarted,
-            maxPlayers,
+            autostart,
+
             entryStake,
             prizeFundPerRound,
             false,
-            address(0),
-            roundId + roundAutostartMs
+            rake,
+            jackpotRate
         );
 
         rounds[roundId] = newRound;
@@ -245,17 +299,28 @@ contract Game is IGame, Ownable, Cashback {
         }
 
         if(playerRound.exists(player)) {
+            //  Check that player is not joining the same round
             require(playerRound[player] != roundId, BaseErrorCodes.NOTHING_CHANGED);
-            uint64 oldRound = playerRound[player];
 
+            //  Check that that player is not participating in an active round already
+            uint64 oldRound = playerRound[player];
             require(rounds[oldRound].status == RoundStatus.Finished || rounds[oldRound].status == RoundStatus.Expired, BaseErrorCodes.NOT_ALLOWED);
+        }
+
+        Round round = rounds[roundId];
+        if(round.entryStake > 0) {
+            //  Increase the counter for entry stakes
+            boardTreasury.roundTreasury[roundId].entranceFee += round.entryStake;
+            //  Reserve the amount to check if the value of message is sufficient
+            tvm.rawReserve(round.entryStake, 0);
         }
 
         playerRound[player] = roundId;
         roundPlayers[roundId].push(player);
         playerCell[player] = 0;
 
-        if(roundPlayers[roundId].length == rounds[roundId].maxPlayers) rounds[roundId].status = RoundStatus.Ready;
+        //if(roundPlayers[roundId].length == rounds[roundId].maxPlayers) rounds[roundId].status = RoundStatus.Ready;
+        _tryStartRound(roundId);
 
         emit RoundJoined(address(this), roundId, player);
 
@@ -275,7 +340,7 @@ contract Game is IGame, Ownable, Cashback {
     returns (uint16 dice, Coordinate newPosition) {
         require(boardInitialized, BaseErrorCodes.TOO_EARLY);
 
-        tvm.rawReserve(msg.value - TX_STORAGE_FEE - RAKE, 1);  //  Reserve everything except the message value less storage fee and rake value
+        tvm.rawReserve(msg.value - TX_STORAGE_FEE - RAKE_DEFAULT, 1);  //  Reserve everything except the message value less storage fee and rake value
 
         address player = msg.sender;
 
@@ -438,7 +503,7 @@ contract Game is IGame, Ownable, Cashback {
         //  Save the status
         rounds[roundId].prizeClaimed = true;
 
-        emit PrizeClaimed(address(this), roundId, round.winner);
+        emit PrizeClaimed(address(this), roundId, round.winner, round.prizeFund);
     }
 
     /**
@@ -596,11 +661,94 @@ contract Game is IGame, Ownable, Cashback {
         totalReserves = boardTreasury.jackpot + boardTreasury.rakes;
 
         for((uint64 rid, ) : boardTreasury.roundTreasury) {
-            ( , uint128 roundReserves) = getRoundReserves(rid);
+            uint128 roundReserves = getRoundReserves(rid);
             totalReserves += roundReserves;
         }
 
         return totalReserves;
+    }
+
+    /**
+        Checks if all necessary conditions for round start are satisfied and starts the round
+
+        @param  roundId     Round identifier
+    */
+    function _tryStartRound(uint64 roundId) internal {
+        require(rounds.exists(roundId), BaseErrorCodes.ITEM_NOT_FOUND);
+
+        Round round = rounds[roundId];
+
+        //  Not applicable if the round is already going
+        if(round.status > RoundStatus.NotStarted) return;
+
+        //  Check that the round has at least one player
+        if(!roundPlayers.exists(roundId)) return;
+
+        //  Minimum number of players must attend the game to start
+        if(roundPlayers[roundId].length < MIN_PLAYERS) return;
+
+        if(roundPlayers[roundId].length < round.maxPlayers) {
+            if(round.autoStartTimestamp.hasValue()) {
+                if(round.autoStartTimestamp.get() > block.timestamp) {
+                    return;
+                } else {
+                    rounds[roundId].status = RoundStatus.Ready;
+                }
+            }
+        } else {
+            rounds[roundId].status = RoundStatus.Ready;
+        }
+    }
+
+    /**
+        Safely removes the player from a round and resets its environment
+
+        @param  roundId     Round identifier
+        @param  player      Player address
+    */
+    function _removePlayerFromRound(uint64 roundId, address player) internal {
+        require(rounds.exists(roundId), BaseErrorCodes.ITEM_NOT_FOUND);
+        require(roundPlayers.exists(roundId), BaseErrorCodes.ITEM_NOT_FOUND);
+
+        //  Detach round from player
+        if(playerRound.exists(player)) delete playerRound[player];
+
+        //  Detach position on the board from player
+        if(playerCell.exists(player)) delete playerCell[player];
+
+        //  Update the list of players
+        address[] newPlayerList;
+
+        for(address pl : roundPlayers[roundId]) {
+            if(pl != player) newPlayerList.push(pl);
+        }
+
+        roundPlayers[roundId] = newPlayerList;
+
+        //  In case the only one player is left in the round, they become winner automatically
+        if(newPlayerList.length == 1) {
+            rounds[roundId].winner = newPlayerList[0];
+            rounds[roundId].status = RoundStatus.Finished;
+        }
+
+        //  Fix the number of players in the storage
+        rounds[roundId].maxPlayers--;
+
+        //  Check for jackpot payout
+        optional(RoundTreasury) rto = boardTreasury.roundTreasury.fetch(roundId);
+        if(!rto.hasValue()) return;
+
+        RoundTreasury rt = rto.get();
+        if(!rt.playerJackpot.exists(player)) return;
+
+        //  Payout jackpot
+        uint128 jackpot = rt.playerJackpot[player];
+        if(jackpot > 0) {
+            player.transfer({value: jackpot, bounce: true});
+            emit JackpotClaimed(address(this), roundId, player, jackpot);
+        }
+
+        delete rt.playerJackpot[player];
     }
 
 }
