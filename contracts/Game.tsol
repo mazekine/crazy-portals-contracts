@@ -7,8 +7,9 @@ import "./abstracts/Ownable.tsol";
 import "./abstracts/Cashback.tsol";
 import "./libraries/Gas.tsol";
 import "@broxus/contracts/contracts/libraries/MsgFlag.tsol";
+import "./abstracts/Jackpot.tsol";
 
-contract Game is IGame, Ownable, Cashback {
+contract Game is IGame, Ownable, Cashback, Jackpot {
     uint64  public static nonce;
 
     //  Default configurations
@@ -760,5 +761,6 @@ contract Game is IGame, Ownable, Cashback {
 
         delete rt.playerJackpot[player];
     }
+
 
 }

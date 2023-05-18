@@ -1,0 +1,26 @@
+// SPDX-License-Identifier: UNLICENSED
+pragma ever-solidity >= 0.62.0;
+
+interface IJackpot {
+    //  Events
+    event JackpotAveragedPeriodsUpdated(address board, uint16 oldVal, uint16 newVal);
+    event JackpotMaxProbabilityUpdated(
+        address board,
+        uint64 oldValue,
+        uint64 newValue
+    );
+    event JackpotMinProbabilityUpdated(
+        address board,
+        uint64 oldValue,
+        uint64 newValue
+    );
+    event JackpotFreezePeriodUpdated(address board, uint64 oldValue, uint64 newValue);
+    event JackpotProbabilityUpdated(address board, uint64 oldValue, uint64 newValue);
+
+    //  Configurators
+    function setJackpotAveragedPeriods(uint16 qty) external;
+    function setJackpotMaxProbability(uint64 p) external;
+    function setJackpotMinProbability(uint64 p) external;
+    function setJackpotProbabilityFreezePeriod(uint64 period) external;
+
+}

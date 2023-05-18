@@ -36,6 +36,7 @@ library BaseErrorCodes {
     uint16 constant SEQUENCE_FINISHED                               = 3013;
     uint16 constant NOT_CONFIGURED                                  = 3014;
     uint16 constant WRONG_CONFIGURATION                             = 3015;
+    uint16 constant DIVISION_BY_ZERO                                = 3016;
 
     //  Access errors
     uint16 constant ROLE_DOESNT_EXIST                               = 4000;

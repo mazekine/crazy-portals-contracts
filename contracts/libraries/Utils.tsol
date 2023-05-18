@@ -45,14 +45,29 @@ library Utils {
         return math.max(address(this).balance - msg.value, CONTRACT_MIN_BALANCE);
     }
 
-/*
-    function _reserve(uint128 minBalance) internal virtual returns (uint128) {
-        return math.max(address(this).balance - msg.value, minBalance);
-    }
-*/
-
     struct UniversalMeta {
         uint64  callId;
         address returnGasTo;
+    }
+
+    function sortU64ByMap(uint64[] arr) internal returns (uint64[]) {
+        mapping(uint64 => uint1) tmp;
+        for(uint64 item : arr) {
+            tmp[item] = 0;
+        }
+
+        return tmp.keys();
+    }
+
+    function medianU64(uint64[] arr) internal returns (uint64) {
+        require(arr.length > 0, BaseErrorCodes.NOT_ALLOWED);
+        uint64[] arrSorted = sortU64ByMap(arr);
+        if(arrSorted.length % 2 == 0) {
+            uint64 a = arrSorted[arrSorted.length / 2 - 1];
+            uint64 b = arrSorted[arrSorted.length / 2];
+            return (a + b) / 2;
+        } else {
+            return arrSorted[arrSorted.length / 2];
+        }
     }
 }

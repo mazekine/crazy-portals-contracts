@@ -1,0 +1,133 @@
+// SPDX-License-Identifier: UNLICENSED
+pragma ever-solidity >= 0.62.0;
+
+import "../interfaces/IJackpot.tsol";
+import "./Cashback.tsol";
+import "./Ownable.tsol";
+import "../libraries/ArrayHelper.tsol";
+
+abstract contract Jackpot is IJackpot, Ownable, Cashback {
+    using ArrayHelper for uint[];
+
+    uint16                  constant AVERAGED_PERIODS_DEFAULT = 30;                 //  30 rolls
+    uint64                  constant PROBABILITY_FREEZE_PERIOD_DEFAULT = 60 * 1000; //  1 minute
+    uint64                  constant MIN_PROBABILITY_DENOMINATOR = 10_000_000;      //  0.00001%
+    uint64                  constant MAX_PROBABILITY_DENOMINATOR = 100;             //  1%
+
+    uint16                  public jackpotAveragedPeriods = AVERAGED_PERIODS_DEFAULT;
+    uint64                  public jackpotProbabilityFreezePeriod = PROBABILITY_FREEZE_PERIOD_DEFAULT;
+    uint64                  public minJackpotProbability = MIN_PROBABILITY_DENOMINATOR;
+    uint64                  public maxJackpotProbability = MAX_PROBABILITY_DENOMINATOR;
+    uint64                  public curJackpotProbability = maxJackpotProbability;
+    uint64                         jackpotWinningNumber;
+    uint64                         jackpotFreezeProbabilityUntil = block.timestamp;
+
+    uint64 latestStepTimestamp;
+    uint[] stepIntervals;
+    uint64 maxAverageInterval;
+
+    constructor() public {
+        latestStepTimestamp = block.timestamp;
+        maxAverageInterval = 0;
+    }
+
+    function setJackpotAveragedPeriods(uint16 qty) external override onlyOwner cashback {
+        tvm.rawReserve(msg.value - 0.05 ever, 12);
+
+        require(qty > 0, BaseErrorCodes.NOT_ALLOWED);
+        uint16 oldVal = jackpotAveragedPeriods;
+        jackpotAveragedPeriods = qty;
+        emit JackpotAveragedPeriodsUpdated(address(this), oldVal, jackpotAveragedPeriods);
+    }
+
+    /**
+        Sets the maximum probability of jackpot
+
+        @param  p   The probability denominator, i.e. the lesser it is, the higher the chance of the jackpot will be
+    */
+    function setJackpotMaxProbability(uint64 p) external override onlyOwner cashback {
+        tvm.rawReserve(msg.value - 0.05 ever, 12);
+
+        require(p > 0, BaseErrorCodes.DIVISION_BY_ZERO);
+
+        uint64 oldVal = maxJackpotProbability;
+        maxJackpotProbability = p;
+        emit JackpotMaxProbabilityUpdated(address(this), oldVal, maxJackpotProbability);
+    }
+
+    /**
+        Sets the minimum probability of jackpot
+
+        @param  p   The probability denominator, i.e. the greater it is, the lower the chance of the jackpot will be
+    */
+    function setJackpotMinProbability(uint64 p) external override onlyOwner cashback {
+        tvm.rawReserve(msg.value - 0.05 ever, 12);
+
+        require(p > 0, BaseErrorCodes.DIVISION_BY_ZERO);
+        require(p > maxJackpotProbability, BaseErrorCodes.NOT_ALLOWED);
+
+        uint64 oldVal = minJackpotProbability;
+        minJackpotProbability = p;
+        emit JackpotMinProbabilityUpdated(address(this), oldVal, minJackpotProbability);
+    }
+
+    function setJackpotProbabilityFreezePeriod(uint64 period) external override onlyOwner cashback {
+        tvm.rawReserve(msg.value - 0.05 ever, 12);
+
+        uint64 oldVal = jackpotProbabilityFreezePeriod;
+        jackpotProbabilityFreezePeriod = period;
+        emit JackpotFreezePeriodUpdated(address(this), oldVal, jackpotProbabilityFreezePeriod);
+    }
+
+    function registerStepInterval(uint64 timestamp) internal {
+        uint64 delta = block.timestamp - latestStepTimestamp + 1;   //  Add 1 millisecond to avoid potential zero deltas in the same block
+        stepIntervals.push(delta);
+
+        latestStepTimestamp = timestamp;
+
+        //  If the averaging window is exceeded, drop the excessive element
+        if(jackpotAveragedPeriods < stepIntervals.length) {
+            stepIntervals.del(0);
+        }
+
+        uint64 averageInterval = getAverageStepInterval();
+        if(averageInterval > maxAverageInterval) maxAverageInterval = averageInterval;
+
+        updateJackpotProbability();
+    }
+
+    function updateJackpotProbability() internal {
+        //  Check that the probability is not frozen
+        if(block.timestamp < jackpotFreezeProbabilityUntil) return;
+
+        //  Get average step interval to assess the board popularity and set a proper probability
+        uint64 curInterval = getAverageStepInterval();
+        uint64 p = math.muldiv(maxJackpotProbability, curInterval, maxAverageInterval);
+
+        //  Limit the minimum probability to avoid overflow and increase fairness of the distribution
+        if(p > minJackpotProbability) p = minJackpotProbability;
+
+        //  Update variables and emit event
+        uint64 oldVal = curJackpotProbability;
+        curJackpotProbability = p;
+        emit JackpotProbabilityUpdated(address(this), oldVal, curJackpotProbability);
+
+        //  Generate a new winning number
+        rnd.shuffle(uint(curInterval));
+        jackpotWinningNumber = rnd.next(curJackpotProbability);
+    }
+
+    function getAverageStepInterval() internal returns (uint64) {
+        return uint64(stepIntervals.median());
+    }
+
+    function drawJackpot(uint64 roundId) internal returns (bool) {
+        //  Take an average of user balance, round Id and average step interval to get a decent random number
+        uint randomizer = math.divr(uint(address(this).balance) + uint(roundId) + uint(getAverageStepInterval()), 3);
+        rnd.shuffle(randomizer);
+
+        //  Generate a random number and compare it with current winning one
+        uint64 playerNumber = rnd.next(curJackpotProbability);
+        return (playerNumber == jackpotWinningNumber);
+    }
+}

@@ -1,0 +1,94 @@
+// SPDX-License-Identifier: UNLICENSED
+pragma ever-solidity >= 0.62.0;
+
+import "./BaseErrorCodes.tsol";
+
+library ArrayHelper {
+    using ArrayHelper for uint[];
+
+    // Delete value from the `array` at `index` position
+    function del(uint[] array, uint index) internal {
+        for (uint i = index; i + 1 < array.length; ++i){
+            array[i] = array[i + 1];
+        }
+        array.pop();
+    }
+
+    function delVal(uint[] array, uint value) internal {
+        for (uint i = 0; i + 1 < array.length; ++i) {
+            if(array[i] == value) {
+                for (uint j = i; j + 1 < array.length; ++j) {
+                    array[j] = array[j + 1];
+                }
+                break;
+            }
+        }
+        array.pop();
+    }
+
+    function quickSort(uint[] arr, uint left, uint right) public returns(uint[]) {
+        if(left >= right) return arr;
+
+        uint i = left;
+        uint j = right;
+
+        uint pivot = arr[left + (right - left) / 2];
+        while (i <= j) {
+            while (arr[i] < pivot) i++;
+            while (pivot < arr[j]) j--;
+            if (i <= j) {
+                (arr[i], arr[j]) = (arr[j], arr[i]);
+                i++;
+                j--;
+            }
+        }
+
+        if (left < j)
+            arr = quickSort(arr, left, j);
+
+        if (i < right)
+            arr = quickSort(arr, i, right);
+
+        return arr;
+    }
+
+    function quickSortU64(uint64[] arr, uint64 left, uint64 right) public returns(uint64[]) {
+        if(left >= right) return arr;
+
+        uint64 i = left;
+        uint64 j = right;
+
+        uint64 pivot = arr[left + (right - left) / 2];
+        while (i <= j) {
+            while (arr[i] < pivot) i++;
+            while (pivot < arr[j]) j--;
+            if (i <= j) {
+                (arr[i], arr[j]) = (arr[j], arr[i]);
+                i++;
+                j--;
+            }
+        }
+
+        if (left < j)
+            arr = quickSortU64(arr, left, j);
+
+        if (i < right)
+            arr = quickSortU64(arr, i, right);
+
+        return arr;
+    }
+
+    function median(uint[] arr) internal returns (uint) {
+        require(arr.length > 0, BaseErrorCodes.NOT_ALLOWED);
+
+        uint[] arrSorted = quickSort(arr, 0, arr.length - 1);
+
+        if(arrSorted.length % 2 == 0) {
+            uint a = arrSorted[arrSorted.length / 2 - 1];
+            uint b = arrSorted[arrSorted.length / 2];
+            return (a + b) / 2;
+        } else {
+            return arrSorted[arrSorted.length / 2];
+        }
+    }
+}

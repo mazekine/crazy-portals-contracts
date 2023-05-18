@@ -190,6 +190,38 @@
 			]
 		},
 		{
+			"name": "setJackpotAveragedPeriods",
+			"inputs": [
+				{"name":"qty","type":"uint16"}
+			],
+			"outputs": [
+			]
+		},
+		{
+			"name": "setJackpotMaxProbability",
+			"inputs": [
+				{"name":"p","type":"uint64"}
+			],
+			"outputs": [
+			]
+		},
+		{
+			"name": "setJackpotMinProbability",
+			"inputs": [
+				{"name":"p","type":"uint64"}
+			],
+			"outputs": [
+			]
+		},
+		{
+			"name": "setJackpotProbabilityFreezePeriod",
+			"inputs": [
+				{"name":"period","type":"uint64"}
+			],
+			"outputs": [
+			]
+		},
+		{
 			"name": "owner",
 			"inputs": [
 				{"name":"answerId","type":"uint32"}
@@ -211,6 +243,46 @@
 				{"name":"newOwner","type":"address"}
 			],
 			"outputs": [
+			]
+		},
+		{
+			"name": "jackpotAveragedPeriods",
+			"inputs": [
+			],
+			"outputs": [
+				{"name":"jackpotAveragedPeriods","type":"uint16"}
+			]
+		},
+		{
+			"name": "jackpotProbabilityFreezePeriod",
+			"inputs": [
+			],
+			"outputs": [
+				{"name":"jackpotProbabilityFreezePeriod","type":"uint64"}
+			]
+		},
+		{
+			"name": "minJackpotProbability",
+			"inputs": [
+			],
+			"outputs": [
+				{"name":"minJackpotProbability","type":"uint64"}
+			]
+		},
+		{
+			"name": "maxJackpotProbability",
+			"inputs": [
+			],
+			"outputs": [
+				{"name":"maxJackpotProbability","type":"uint64"}
+			]
+		},
+		{
+			"name": "curJackpotProbability",
+			"inputs": [
+			],
+			"outputs": [
+				{"name":"curJackpotProbability","type":"uint64"}
 			]
 		},
 		{
@@ -343,6 +415,56 @@
 			"inputs": [
 				{"name":"previousOwner","type":"address"},
 				{"name":"newOwner","type":"address"}
+			],
+			"outputs": [
+			]
+		},
+		{
+			"name": "JackpotAveragedPeriodsUpdated",
+			"inputs": [
+				{"name":"board","type":"address"},
+				{"name":"oldVal","type":"uint16"},
+				{"name":"newVal","type":"uint16"}
+			],
+			"outputs": [
+			]
+		},
+		{
+			"name": "JackpotMaxProbabilityUpdated",
+			"inputs": [
+				{"name":"board","type":"address"},
+				{"name":"oldValue","type":"uint64"},
+				{"name":"newValue","type":"uint64"}
+			],
+			"outputs": [
+			]
+		},
+		{
+			"name": "JackpotMinProbabilityUpdated",
+			"inputs": [
+				{"name":"board","type":"address"},
+				{"name":"oldValue","type":"uint64"},
+				{"name":"newValue","type":"uint64"}
+			],
+			"outputs": [
+			]
+		},
+		{
+			"name": "JackpotFreezePeriodUpdated",
+			"inputs": [
+				{"name":"board","type":"address"},
+				{"name":"oldValue","type":"uint64"},
+				{"name":"newValue","type":"uint64"}
+			],
+			"outputs": [
+			]
+		},
+		{
+			"name": "JackpotProbabilityUpdated",
+			"inputs": [
+				{"name":"board","type":"address"},
+				{"name":"oldValue","type":"uint64"},
+				{"name":"newValue","type":"uint64"}
 			],
 			"outputs": [
 			]
@@ -567,6 +689,16 @@
 		{"name":"_constructorFlag","type":"bool"},
 		{"name":"_owner","type":"address"},
 		{"name":"_initialized","type":"bool"},
+		{"name":"jackpotAveragedPeriods","type":"uint16"},
+		{"name":"jackpotProbabilityFreezePeriod","type":"uint64"},
+		{"name":"minJackpotProbability","type":"uint64"},
+		{"name":"maxJackpotProbability","type":"uint64"},
+		{"name":"curJackpotProbability","type":"uint64"},
+		{"name":"jackpotWinningNumber","type":"uint64"},
+		{"name":"jackpotFreezeProbabilityUntil","type":"uint64"},
+		{"name":"latestStepTimestamp","type":"uint64"},
+		{"name":"stepIntervals","type":"uint256[]"},
+		{"name":"maxAverageInterval","type":"uint64"},
 		{"name":"nonce","type":"uint64"},
 		{"name":"seed","type":"uint256"},
 		{"name":"blueBeamsNumber","type":"uint16"},
