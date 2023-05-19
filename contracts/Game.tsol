@@ -261,6 +261,7 @@ contract Game is IGame, Ownable, Cashback, Jackpot {
             false,
 
             roundId + maxRoundDurationMs,
+            maxRoundDurationMs,
             maxMoveDurationMs,
             autostart,
 

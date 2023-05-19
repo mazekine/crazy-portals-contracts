@@ -36,6 +36,7 @@ interface IGame {
 
         //  Timings
         uint64              validUntil;
+        uint64              roundDuration;
         uint64              moveDuration;
         optional(uint64)    autoStartTimestamp;
 

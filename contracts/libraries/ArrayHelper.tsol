@@ -79,7 +79,7 @@ library ArrayHelper {
     }
 
     function median(uint[] arr) internal returns (uint) {
-        require(arr.length > 0, BaseErrorCodes.NOT_ALLOWED);
+        require(arr.length > 0, BaseErrorCodes.NON_EMPTY_VALUE_REQUIRED);
 
         uint[] arrSorted = quickSort(arr, 0, arr.length - 1);
 

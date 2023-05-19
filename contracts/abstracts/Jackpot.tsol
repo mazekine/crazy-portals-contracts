@@ -29,6 +29,10 @@ abstract contract Jackpot is IJackpot, Ownable, Cashback {
     constructor() public {
         latestStepTimestamp = block.timestamp;
         maxAverageInterval = 0;
+
+        //  Generate a first winning number
+        rnd.shuffle();
+        jackpotWinningNumber = rnd.next(curJackpotProbability);
     }
 
     function setJackpotAveragedPeriods(uint16 qty) external override onlyOwner cashback {
@@ -100,6 +104,9 @@ abstract contract Jackpot is IJackpot, Ownable, Cashback {
         //  Check that the probability is not frozen
         if(block.timestamp < jackpotFreezeProbabilityUntil) return;
 
+        //  Until a minimum number of averaged periods is reached, keep the maximum probability
+        if(jackpotAveragedPeriods < stepIntervals.length) return;
+
         //  Get average step interval to assess the board popularity and set a proper probability
         uint64 curInterval = getAverageStepInterval();
         uint64 p = maxJackpotProbability + math.muldiv(minJackpotProbability - maxJackpotProbability, curInterval, maxAverageInterval);
@@ -118,6 +125,7 @@ abstract contract Jackpot is IJackpot, Ownable, Cashback {
     }
 
     function getAverageStepInterval() internal returns (uint64) {
+        if(stepIntervals.empty()) return 0;
         return uint64(stepIntervals.median());
     }
 

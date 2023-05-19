@@ -49,7 +49,7 @@ library Utils {
         uint64  callId;
         address returnGasTo;
     }
-
+/*
     function sortU64ByMap(uint64[] arr) internal returns (uint64[]) {
         mapping(uint64 => uint1) tmp;
         for(uint64 item : arr) {
@@ -69,5 +69,5 @@ library Utils {
         } else {
             return arrSorted[arrSorted.length / 2];
         }
-    }
+    }*/
 }
