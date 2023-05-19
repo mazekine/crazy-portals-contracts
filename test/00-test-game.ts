@@ -293,35 +293,18 @@ describe("Test Game", async function () {
             console.log(tabulator + "Game balance: " + locklift.utils.fromNano(await locklift.provider.getBalance(game.address)) + " EVER");
 
             round = await game.methods.getRound({answerId: 0, roundId: roundId}).call();
-
             expect(round.round!!.status).to.be.equal("1", "Round is in the wrong status");
+
+            let roundPlayers = await game.fields.roundPlayers.call(0);
+            roundPlayers.forEach(([_rid, _rp]) => {
+                if(_rid == roundId)
+                    expect(_rp.length.toString()).to.be.equal(round.round!!.maxPlayers, "Wrong number of players in round");
+            });
+
         });
 
         it("Roll dices", async function () {
             let stepsCounter: number = 0;
-/*
-            interface Coordinate {
-                x: number;
-                y: number;
-            }
-
-            interface Location {
-                cell: number;
-                coordinate: Coordinate;
-            }
-
-            interface Step {
-                from: Location;
-                to: Location;
-            }
-
-            interface Round {
-                first: Step;
-                second: Step;
-            }
-
-            let rounds: Map<number, Round>;
-*/
 
             let winner: Address;
             let deployerBalance = +(await locklift.provider.getBalance(deployer));
@@ -346,9 +329,9 @@ describe("Test Game", async function () {
                     .roll({answerId: 0})
                     .send({
                         from: deployer,
-                        amount: locklift.utils.toNano(0.1),
+                        amount: locklift.utils.toNano(0.2),
                         bounce: true
-                    }), {raise: false, allowedCodes: {compute: [1060, 5005]}}
+                    }), {raise: true, allowedCodes: {compute: [1060, 5005]}}
                 );
 
                 //expect(rollFirstTx.traceTree).to.not.have.error();
@@ -358,9 +341,9 @@ describe("Test Game", async function () {
                     .roll({answerId: 0})
                     .send({
                         from: opponent,
-                        amount: locklift.utils.toNano(0.1),
+                        amount: locklift.utils.toNano(0.2),
                         bounce: true
-                    }), {raise: false, allowedCodes: {compute: [1060, 5005]}}
+                    }), {raise: true, allowedCodes: {compute: [1060, 5005]}}
                 );
 
                 //expect(rollSecondTx.traceTree).to.not.have.error();
@@ -384,6 +367,8 @@ describe("Test Game", async function () {
                         console.log(tabulator.repeat(2) + `${maskedAddress}: ${stepsSummary}`);
                     }
                     console.log(tabulator.repeat(2) + "Game balance: " + locklift.utils.fromNano(await locklift.provider.getBalance(game.address)) + " EVER");
+                } else {
+                    console.log(move);
                 }
             }
 

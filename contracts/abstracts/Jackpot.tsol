@@ -102,7 +102,7 @@ abstract contract Jackpot is IJackpot, Ownable, Cashback {
 
         //  Get average step interval to assess the board popularity and set a proper probability
         uint64 curInterval = getAverageStepInterval();
-        uint64 p = math.muldiv(maxJackpotProbability, curInterval, maxAverageInterval);
+        uint64 p = maxJackpotProbability + math.muldiv(minJackpotProbability - maxJackpotProbability, curInterval, maxAverageInterval);
 
         //  Limit the minimum probability to avoid overflow and increase fairness of the distribution
         if(p > minJackpotProbability) p = minJackpotProbability;
@@ -123,11 +123,15 @@ abstract contract Jackpot is IJackpot, Ownable, Cashback {
 
     function drawJackpot(uint64 roundId) internal returns (bool) {
         //  Take an average of user balance, round Id and average step interval to get a decent random number
-        uint randomizer = math.divr(uint(address(this).balance) + uint(roundId) + uint(getAverageStepInterval()), 3);
+        uint randomizer = getRandomizer(roundId);
         rnd.shuffle(randomizer);
 
         //  Generate a random number and compare it with current winning one
         uint64 playerNumber = rnd.next(curJackpotProbability);
         return (playerNumber == jackpotWinningNumber);
+    }
+
+    function getRandomizer(uint64 roundId) internal returns (uint) {
+        return math.divr(uint(address(this).balance) + uint(roundId) + uint(getAverageStepInterval()), 3);
     }
 }

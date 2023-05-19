@@ -6,7 +6,7 @@ import "./BaseErrorCodes.tsol";
 
 library Utils {
 
-    uint128 constant CONTRACT_MIN_BALANCE = 0.1 ever;
+    uint128 constant CONTRACT_MIN_BALANCE = 0.2 ever;
 
     /// Looks for a value corresponding to the selected key, if any
     /// @param  keys    Array of keys
