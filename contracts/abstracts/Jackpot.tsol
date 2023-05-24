@@ -24,6 +24,7 @@ abstract contract Jackpot is IJackpot, Ownable, Cashback {
 
     uint64 latestStepTimestamp;
     uint[] stepIntervals;
+    uint64 averageStepInterval;
     uint64 maxAverageInterval;
 
     constructor() public {
@@ -94,8 +95,8 @@ abstract contract Jackpot is IJackpot, Ownable, Cashback {
             stepIntervals.del(0);
         }
 
-        uint64 averageInterval = getAverageStepInterval();
-        if(averageInterval > maxAverageInterval) maxAverageInterval = averageInterval;
+        //averageStepInterval = getAverageStepInterval();
+        if(averageStepInterval > maxAverageInterval) maxAverageInterval = averageStepInterval;
 
         updateJackpotProbability();
     }
@@ -108,20 +109,24 @@ abstract contract Jackpot is IJackpot, Ownable, Cashback {
         if(jackpotAveragedPeriods < stepIntervals.length) return;
 
         //  Get average step interval to assess the board popularity and set a proper probability
-        uint64 curInterval = getAverageStepInterval();
+        uint64 curInterval = averageStepInterval;
         uint64 p = maxJackpotProbability + math.muldiv(minJackpotProbability - maxJackpotProbability, curInterval, maxAverageInterval);
 
         //  Limit the minimum probability to avoid overflow and increase fairness of the distribution
-        if(p > minJackpotProbability) p = minJackpotProbability;
+        if (p > minJackpotProbability) p = minJackpotProbability;
 
-        //  Update variables and emit event
-        uint64 oldVal = curJackpotProbability;
-        curJackpotProbability = p;
-        emit JackpotProbabilityUpdated(address(this), oldVal, curJackpotProbability);
+        if (p != curJackpotProbability) {
+            //  Update variables and emit event
+            uint64 oldVal = curJackpotProbability;
+            curJackpotProbability = p;
+            emit JackpotProbabilityUpdated(address(this), oldVal, curJackpotProbability);
 
-        //  Generate a new winning number
-        rnd.shuffle(uint(curInterval));
-        jackpotWinningNumber = rnd.next(curJackpotProbability);
+            //  Generate a new winning number
+            rnd.shuffle(uint(curInterval));
+            jackpotWinningNumber = rnd.next(curJackpotProbability);
+
+            jackpotFreezeProbabilityUntil = block.timestamp + jackpotProbabilityFreezePeriod;
+        }
     }
 
     function getAverageStepInterval() internal returns (uint64) {
@@ -139,7 +144,19 @@ abstract contract Jackpot is IJackpot, Ownable, Cashback {
         return (playerNumber == jackpotWinningNumber);
     }
 
-    function getRandomizer(uint64 roundId) internal returns (uint) {
-        return math.divr(uint(address(this).balance) + uint(roundId) + uint(getAverageStepInterval()), 3);
+    function getRandomizer(uint64 roundId) internal view returns (uint) {
+        return math.divr(uint(address(this).balance) + uint(roundId) + uint(averageStepInterval), 3);
+    }
+
+    uint[] something;
+
+    function tryMapSort(uint[] arr) external returns(uint[]) {
+        something = arr.mapSort();
+        return something;
+    }
+
+    function tryQuickSort(uint[] arr) external returns(uint[]) {
+        something = arr.quickSort(0, arr.length - 1);
+        return something;
     }
 }

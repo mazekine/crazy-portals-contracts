@@ -4,8 +4,6 @@ pragma ever-solidity >= 0.62.0;
 import "./BaseErrorCodes.tsol";
 
 library ArrayHelper {
-    using ArrayHelper for uint[];
-
     // Delete value from the `array` at `index` position
     function del(uint[] array, uint index) internal {
         for (uint i = index; i + 1 < array.length; ++i){
@@ -28,14 +26,15 @@ library ArrayHelper {
 
     function quickSort(uint[] arr, uint left, uint right) public returns(uint[]) {
         if(left >= right) return arr;
+        if(right >= arr.length) return arr;
 
         uint i = left;
         uint j = right;
 
         uint pivot = arr[left + (right - left) / 2];
         while (i <= j) {
-            while (arr[i] < pivot) i++;
-            while (pivot < arr[j]) j--;
+            while (arr[i] < pivot && i < arr.length) i++;
+            while (pivot < arr[j] && j != 0) j--;
             if (i <= j) {
                 (arr[i], arr[j]) = (arr[j], arr[i]);
                 i++;
@@ -52,30 +51,20 @@ library ArrayHelper {
         return arr;
     }
 
-    function quickSortU64(uint64[] arr, uint64 left, uint64 right) public returns(uint64[]) {
-        if(left >= right) return arr;
+    function mapSort(uint[] arr) public returns(uint[]) {
+        mapping(uint => uint32) m;
+        for(uint i : arr) {
+            if(m.exists(i)) { m[i]++; } else { m[i] = 1; }
+        }
 
-        uint64 i = left;
-        uint64 j = right;
-
-        uint64 pivot = arr[left + (right - left) / 2];
-        while (i <= j) {
-            while (arr[i] < pivot) i++;
-            while (pivot < arr[j]) j--;
-            if (i <= j) {
-                (arr[i], arr[j]) = (arr[j], arr[i]);
-                i++;
-                j--;
+        uint[] result;
+        for((uint k, uint v) : m) {
+            for(uint i = 0; i < v; i++) {
+                result.push(k);
             }
         }
 
-        if (left < j)
-            arr = quickSortU64(arr, left, j);
-
-        if (i < right)
-            arr = quickSortU64(arr, i, right);
-
-        return arr;
+        return result;
     }
 
     function median(uint[] arr) internal returns (uint) {

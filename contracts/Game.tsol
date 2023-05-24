@@ -16,7 +16,7 @@ contract Game is IGame, Ownable, Cashback, Jackpot {
     uint64  private constant MAX_ROUND_DURATION_MS_DEFAULT = 30 * 60 * 1000; //  30 minutes
     uint64  private constant MOVE_DURATION_MS_DEFAULT      =  1 * 60 * 1000; //  1 minute
     uint64  private constant ROUND_AUTOSTART_MS_DEFAULT    =  5 * 60 * 1000; //  5 minutes
-    uint128 private constant TX_STORAGE_FEE = 0.1 ever;                      //  Default estimation of storage fee
+    uint128 private constant TX_STORAGE_FEE = 0.05 ever;                      //  Default estimation of storage fee
     uint128 private constant RAKE_DEFAULT = 0.01 ever;                       //  Default rake rate for a game
     uint8   private constant JACKPOT_RATE_DEFAULT = 0;                       //  Default jackpot rate
     uint128 private constant PRIZE_FUND_PER_ROUND_DEFAULT = 1 ever;          //  Default prize fund per game
@@ -342,6 +342,7 @@ contract Game is IGame, Ownable, Cashback, Jackpot {
     returns (uint16 dice, Coordinate newPosition) {
         require(boardInitialized, BaseErrorCodes.TOO_EARLY);
 
+        //  TODO: Autostart
         //uint128 totalBalance = address(this).balance;
         tvm.rawReserve(msg.value - TX_STORAGE_FEE, 1);  //  Reserve everything except the message value less storage fee and rake value
 
@@ -390,12 +391,14 @@ contract Game is IGame, Ownable, Cashback, Jackpot {
         }
 
         //  Take rake and jackpot
-        tvm.rawReserve(round.rake, 0);
+        if(round.rake > 0) {
+            tvm.rawReserve(round.rake, 0);
 
-        uint128 jackpotAccrual = math.muldiv(round.rake, round.rakeToJackpotRate, 100);
-        uint128 rakeRemainder = round.rake - jackpotAccrual;
-        boardTreasury.rakes += rakeRemainder;
-        boardTreasury.jackpot += jackpotAccrual;
+            uint128 jackpotAccrual = math.muldiv(round.rake, round.rakeToJackpotRate, 100);
+            uint128 rakeRemainder = round.rake - jackpotAccrual;
+            boardTreasury.rakes += rakeRemainder;
+            boardTreasury.jackpot += jackpotAccrual;
+        }
 
         mapping(address => Step[]) playersMoved;
         Step[]  steps;
@@ -429,7 +432,7 @@ contract Game is IGame, Ownable, Cashback, Jackpot {
         rnd.shuffle(getRandomizer(roundId));
         uint16 diceVal = rnd.next(6) + 1;
 
-        emit DiceRolled(player, dice);
+        emit DiceRolled(player, diceVal);
 
         //  Calculate new coordinates
         Location    curLocation;
@@ -443,6 +446,7 @@ contract Game is IGame, Ownable, Cashback, Jackpot {
 
         prevLocation = Location(curCell, _getCoordinate(curCell));
         curLocation  = Location(newCell, _getCoordinate(newCell));
+        emit PlayerMoved(address(this), roundId, player, prevLocation, curLocation);
 
         if(boardOverflow < 0) {             //  The player has come out of the board
             newCell = uint16(int16(board.columns * board.rows) + boardOverflow);
@@ -464,6 +468,18 @@ contract Game is IGame, Ownable, Cashback, Jackpot {
         y = curLocation.coordinate.y;
 
         //  Check if player stepped on a portal entrance
+        //  Consider only one portal teleportation is possible
+        if(cells[curLocation.cell].hasValue()) {
+            Path path = cells[curLocation.cell].get();
+            if(path.from.x == curLocation.coordinate.x && path.from.y == curLocation.coordinate.y) {
+                prevLocation = curLocation;
+                curLocation = Location(_getCell(path.to.x, path.to.y), Coordinate(path.to.x, path.to.y));
+                move.playerSteps[player].push(Step(prevLocation, curLocation));
+                emit PlayerMoved(address(this), roundId, player, prevLocation, curLocation);
+            }
+        }
+
+/*
         bool flag;
         while(!flag) {
             (uint16 _x, uint16 _y) = _checkContinuation(player, x, y);
@@ -479,35 +495,38 @@ contract Game is IGame, Ownable, Cashback, Jackpot {
                 emit PlayerMoved(address(this), roundId, player, prevLocation, curLocation);
             }
         }
+*/
 
         newCell = _getCell(x, y);
         playerCell[player] = newCell;
         roundMoves[roundId] = move;
 
-        //  Register step interval for adaptive jackpot
-        registerStepInterval(uint64(block.timestamp));
+        if(round.rake > 0 && round.rakeToJackpotRate > 0) {
+            //  Register step interval for adaptive jackpot
+            registerStepInterval(uint64(block.timestamp));
 
-        //  Draw jackpot
-        if(drawJackpot(roundId)) {
-            uint128 jackpot = boardTreasury.jackpot;
-            if(jackpot > 0) {
-                //  Reset the accumulated jackpot
-                boardTreasury.jackpot = 0;
+            //  Draw jackpot
+            if(drawJackpot(roundId)) {
+                uint128 jackpot = boardTreasury.jackpot;
+                if(jackpot > 0) {
+                    //  Reset the accumulated jackpot
+                    boardTreasury.jackpot = 0;
 
-                //  Add round treasury if it doesn't exist yet
-                boardTreasury.roundTreasury.getAdd(roundId, RoundTreasury({
-                    entranceFee: 0,
-                    prize: 0,
-                    playerJackpot: emptyMap
-                }));
+                    //  Add round treasury if it doesn't exist yet
+                    boardTreasury.roundTreasury.getAdd(roundId, RoundTreasury({
+                        entranceFee: 0,
+                        prize: 0,
+                        playerJackpot: emptyMap
+                    }));
 
-                //  Add player jackpot accrual if it doesn't exist yet
-                boardTreasury.roundTreasury[roundId].playerJackpot.getAdd(player, 0);
+                    //  Add player jackpot accrual if it doesn't exist yet
+                    boardTreasury.roundTreasury[roundId].playerJackpot.getAdd(player, 0);
 
-                //  Increase player's jackpot
-                boardTreasury.roundTreasury[roundId].playerJackpot[player] += jackpot;
+                    //  Increase player's jackpot
+                    boardTreasury.roundTreasury[roundId].playerJackpot[player] += jackpot;
 
-                emit JackpotDrawn(address(this), roundId, player, jackpot);
+                    emit JackpotDrawn(address(this), roundId, player, jackpot);
+                }
             }
         }
 
@@ -524,14 +543,20 @@ contract Game is IGame, Ownable, Cashback, Jackpot {
         require(rounds.exists(roundId), BaseErrorCodes.ITEM_NOT_FOUND);
         Round round = rounds[roundId];
 
+        require(boardTreasury.roundTreasury.exists(roundId), BaseErrorCodes.ITEM_NOT_FOUND);
+        RoundTreasury rt = boardTreasury.roundTreasury[roundId];
+
         //  If prize fund is empty, no sense to trigger transaction and spend money
-        require(round.prizeFund > 0, BaseErrorCodes.NOTHING_TO_PAY);
+        //require(round.prizeFund > 0, BaseErrorCodes.NOTHING_TO_PAY);
+        require(rt.prize > 0, BaseErrorCodes.NOTHING_TO_PAY);
+
+        uint128 totalPrize = rt.prize + rt.entranceFee;
 
         //  Check that the balance is sufficient
-        require(address(this).balance > round.prizeFund + Utils.CONTRACT_MIN_BALANCE + msg.value, BaseErrorCodes.NOT_ENOUGH_BALANCE);
+        require(address(this).balance > (totalPrize + Utils.CONTRACT_MIN_BALANCE + msg.value), BaseErrorCodes.NOT_ENOUGH_BALANCE);
 
         //  Reserve the remaining amount to secure other rounds
-        tvm.rawReserve(round.prizeFund + msg.value - TX_STORAGE_FEE, 12);    //  Hotfix until tx fee information appears on mainnet
+        tvm.rawReserve(totalPrize + msg.value - TX_STORAGE_FEE, 12);    //  Hotfix until tx fee information appears on mainnet
         //tvm.rawReserve(round.prizeFund + msg.value - tx.storageFee, 12);    //  Reserve all but prize fund for this round and message value less storage fee
 
         //  Check if the round has finished
@@ -543,10 +568,10 @@ contract Game is IGame, Ownable, Cashback, Jackpot {
         //  require(address(this).balance > round.prizeFund, BaseErrorCodes.NOT_ENOUGH_BALANCE);
 
         //  Check that the prize hasn't been claimed already
-        require(!round.prizeClaimed,                     BaseErrorCodes.FINISHED);
+        require(!round.prizeClaimed, BaseErrorCodes.FINISHED);
 
         //  Transfer the prize to the winner
-        round.winner.transfer({value: round.prizeFund, bounce: false, flag: MsgFlag.SENDER_PAYS_FEES});
+        round.winner.transfer({value: totalPrize, bounce: false, flag: MsgFlag.SENDER_PAYS_FEES});
 
         //  Save the status
         rounds[roundId].prizeClaimed = true;
