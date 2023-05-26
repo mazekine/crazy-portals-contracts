@@ -244,7 +244,7 @@ contract Game is IGame, Ownable, Cashback, Jackpot {
     returns (Round round) {
         require(boardInitialized, BaseErrorCodes.TOO_EARLY);
 
-        uint64 roundId = block.timestamp;
+        uint64 roundId = Utils._getTimestamp();
         require(!rounds.exists(roundId), BaseErrorCodes.ITEM_EXISTS);
 
         optional(uint64) autostart = roundAutostartMs;
@@ -258,7 +258,7 @@ contract Game is IGame, Ownable, Cashback, Jackpot {
             address(0),
 
             maxPlayers,
-            false,
+            giveUpAllowed,
 
             roundId + maxRoundDurationMs,
             maxRoundDurationMs,
@@ -370,8 +370,10 @@ contract Game is IGame, Ownable, Cashback, Jackpot {
         require(round.status != RoundStatus.Finished, BaseErrorCodes.FINISHED);
         require(round.status != RoundStatus.Expired, BaseErrorCodes.TOO_LATE);
 
+        uint64 timestamp = Utils._getTimestamp();
+
         //  Check that the round is not expired on this roll
-        if(round.validUntil <= block.timestamp) {
+        if(round.validUntil <= timestamp) {
             rounds[roundId].status = RoundStatus.Expired;
             tvm.commit();
             revert(BaseErrorCodes.TOO_LATE);
@@ -409,13 +411,13 @@ contract Game is IGame, Ownable, Cashback, Jackpot {
             move = roundMoves[roundId];
 
             if(
-                (move.expiresAt < block.timestamp) ||                   //  If move has expired
+                (move.expiresAt < timestamp) ||                   //  If move has expired
                 (move.playerSteps.keys().length == round.maxPlayers)    //  or all players have moved
             ) {
-                move = Move(block.timestamp + round.moveDuration, playersMoved);
+                move = Move(timestamp + round.moveDuration, playersMoved);
             }
         } else {
-            move = Move(block.timestamp + round.moveDuration, playersMoved);
+            move = Move(timestamp + round.moveDuration, playersMoved);
         }
 
         //  Check that player hasn't moved yet
@@ -503,7 +505,7 @@ contract Game is IGame, Ownable, Cashback, Jackpot {
 
         if(round.rake > 0 && round.rakeToJackpotRate > 0) {
             //  Register step interval for adaptive jackpot
-            registerStepInterval(uint64(block.timestamp));
+            registerStepInterval(Utils._getTimestamp());
 
             //  Draw jackpot
             if(drawJackpot(roundId)) {
@@ -762,7 +764,7 @@ contract Game is IGame, Ownable, Cashback, Jackpot {
 
         if(roundPlayers[roundId].length < round.maxPlayers) {
             if(round.autoStartTimestamp.hasValue()) {
-                if(round.autoStartTimestamp.get() > block.timestamp) {
+                if(round.autoStartTimestamp.get() > Utils._getTimestamp()) {
                     return;
                 } else {
                     rounds[roundId].status = RoundStatus.Ready;

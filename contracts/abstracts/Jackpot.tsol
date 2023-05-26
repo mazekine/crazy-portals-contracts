@@ -20,7 +20,7 @@ abstract contract Jackpot is IJackpot, Ownable, Cashback {
     uint64                  public maxJackpotProbability = MAX_PROBABILITY_DENOMINATOR;
     uint64                  public curJackpotProbability = maxJackpotProbability;
     uint64                         jackpotWinningNumber;
-    uint64                         jackpotFreezeProbabilityUntil = block.timestamp;
+    uint64                         jackpotFreezeProbabilityUntil;
 
     uint64 latestStepTimestamp;
     uint[] stepIntervals;
@@ -28,12 +28,13 @@ abstract contract Jackpot is IJackpot, Ownable, Cashback {
     uint64 maxAverageInterval;
 
     constructor() public {
-        latestStepTimestamp = block.timestamp;
+        latestStepTimestamp = Utils._getTimestamp();
         maxAverageInterval = 0;
 
         //  Generate a first winning number
         rnd.shuffle();
         jackpotWinningNumber = rnd.next(curJackpotProbability);
+        jackpotFreezeProbabilityUntil = latestStepTimestamp;
     }
 
     function setJackpotAveragedPeriods(uint16 qty) external override onlyOwner cashback {
@@ -85,7 +86,7 @@ abstract contract Jackpot is IJackpot, Ownable, Cashback {
     }
 
     function registerStepInterval(uint64 timestamp) internal {
-        uint64 delta = block.timestamp - latestStepTimestamp + 1;   //  Add 1 millisecond to avoid potential zero deltas in the same block
+        uint64 delta = Utils._getTimestamp() - latestStepTimestamp + 1;   //  Add 1 millisecond to avoid potential zero deltas in the same block
         stepIntervals.push(delta);
 
         latestStepTimestamp = timestamp;
@@ -102,8 +103,10 @@ abstract contract Jackpot is IJackpot, Ownable, Cashback {
     }
 
     function updateJackpotProbability() internal {
+        uint64 timestamp = Utils._getTimestamp();
+
         //  Check that the probability is not frozen
-        if(block.timestamp < jackpotFreezeProbabilityUntil) return;
+        if(timestamp < jackpotFreezeProbabilityUntil) return;
 
         //  Until a minimum number of averaged periods is reached, keep the maximum probability
         if(jackpotAveragedPeriods < stepIntervals.length) return;
@@ -125,7 +128,7 @@ abstract contract Jackpot is IJackpot, Ownable, Cashback {
             rnd.shuffle(uint(curInterval));
             jackpotWinningNumber = rnd.next(curJackpotProbability);
 
-            jackpotFreezeProbabilityUntil = block.timestamp + jackpotProbabilityFreezePeriod;
+            jackpotFreezeProbabilityUntil = timestamp + jackpotProbabilityFreezePeriod;
         }
     }
 
@@ -134,7 +137,7 @@ abstract contract Jackpot is IJackpot, Ownable, Cashback {
         return uint64(stepIntervals.median());
     }
 
-    function drawJackpot(uint64 roundId) internal returns (bool) {
+    function drawJackpot(uint64 roundId) internal view returns (bool) {
         //  Take an average of user balance, round Id and average step interval to get a decent random number
         uint randomizer = getRandomizer(roundId);
         rnd.shuffle(randomizer);
