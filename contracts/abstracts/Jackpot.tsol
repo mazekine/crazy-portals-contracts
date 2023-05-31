@@ -9,7 +9,7 @@ import "../libraries/ArrayHelper.tsol";
 abstract contract Jackpot is IJackpot, Ownable, Cashback {
     using ArrayHelper for uint[];
 
-    uint16                  constant AVERAGED_PERIODS_DEFAULT = 30;                 //  30 rolls
+    uint16                  constant AVERAGED_PERIODS_DEFAULT = 10;                 //  30 rolls
     uint64                  constant PROBABILITY_FREEZE_PERIOD_DEFAULT = 60 * 1000; //  1 minute
     uint64                  constant MIN_PROBABILITY_DENOMINATOR = 10_000_000;      //  0.00001%
     uint64                  constant MAX_PROBABILITY_DENOMINATOR = 100;             //  1%
@@ -96,7 +96,7 @@ abstract contract Jackpot is IJackpot, Ownable, Cashback {
             stepIntervals.del(0);
         }
 
-        //averageStepInterval = getAverageStepInterval();
+        averageStepInterval = getAverageStepInterval();
         if(averageStepInterval > maxAverageInterval) maxAverageInterval = averageStepInterval;
 
         updateJackpotProbability();

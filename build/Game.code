@@ -2044,13 +2044,17 @@ PUSHINT 5001
 GETGLOB 28
 THROWANYIFNOT
 .loc ../contracts/Game.tsol, 347
+GETPARAM 7
+FIRST
 DEPTH
 ADDCONST -2
 PICK
-PUSHINT 50000000
 SUB
 UFITS 128
-PUSHINT 1
+PUSHINT 50000000
+ADD
+UFITS 128
+PUSHINT 0
 RAWRESERVE
 .loc ../contracts/Game.tsol, 349
 GETGLOB 9
@@ -3331,47 +3335,51 @@ PUSHCONT {
 			GETGLOBVAR
 			PUSHINT 0
 			SETINDEX 1
-			DUP
 			PUSHINT 47
 			SETGLOBVAR
 			.loc ../contracts/Game.tsol, 518
-			DUP
+			PUSH S8
+			PUSHINT 47
+			GETGLOBVAR
 			THIRD
-			PUSHINT 0
-			DUP
-			NEWDICT
-			TRIPLE
-			CALLREF {
-				UNTRIPLE
-				XCHG S2
-				NEWC
-				STU 128
-				STU 128
-				STDICT
-			}
-			PUSH S11
-			ROT
 			PUSHINT 64
-			DICTUADDGETB
-			NULLSWAPIF
+			DICTUGET
+			NULLSWAPIFNOT
+			NIP
 			PUSHCONT {
-				LDU 128
-				LDU 128
-				LDDICT
-				ENDS
+				.loc ../contracts/Game.tsol, 519
+				PUSHINT 0
+				DUP
+				NEWDICT
 				TRIPLE
+				PUSHINT 47
+				GETGLOBVAR
+				DUP
+				THIRD
+				PUXC S11, S-1
+				ROLL 3
+				CALLREF {
+					UNTRIPLE
+					XCHG S2
+					NEWC
+					STU 128
+					STU 128
+					STDICT
+				}
+				ROTREV
+				PUSHINT 64
+				DICTUSETB
+				SETINDEX 2
+				PUSHINT 47
+				SETGLOBVAR
+				.loc ../contracts/Game.tsol, 0
 			}
 			IFNOT
-			DROP
-			SETINDEX 2
-			DUP
+			.loc ../contracts/Game.tsol, 527
+			BLKPUSH 2, 9
 			PUSHINT 47
-			SETGLOBVAR
-			.loc ../contracts/Game.tsol, 525
-			DUP
+			GETGLOBVAR
 			THIRD
-			PUXC S10, S-1
-			DUP2
 			PUSHINT 64
 			DICTUGET
 IFREFELSEREF
@@ -3388,37 +3396,63 @@ IFREFELSEREF
 				NEWDICT
 				TRIPLE
 }
-			DUP
 			THIRD
-			PUSHINT 0
-			NEWC
-			STU 128
-			PUSH S15
-			ROT
 			PUSHINT 267
-			DICTADDGETB
-			NULLSWAPIF
+			DICTGET
+			NULLSWAPIFNOT
+			NIP
 			PUSHCONT {
-				PLDU 128
-			}
-			IFNOT
-			DROP
-			SETINDEX 2
-			CALLREF {
-				UNTRIPLE
-				XCHG S2
+				.loc ../contracts/Game.tsol, 528
+				PUSHINT 47
+				GETGLOBVAR
+				DUP
+				THIRD
+				PUXC S10, S-1
+				DUP2
+				PUSHINT 64
+				DICTUGET
+IFREFELSEREF
+{
+					LDU 128
+					LDU 128
+					LDDICT
+					ENDS
+					TRIPLE
+}
+{
+					PUSHINT 0
+					DUP
+					NEWDICT
+					TRIPLE
+}
+				DUP
+				THIRD
+				PUXC S14, S-1
+				PUSHINT 0
 				NEWC
 				STU 128
-				STU 128
-				STDICT
+				ROTREV
+				PUSHINT 267
+				DICTSETB
+				SETINDEX 2
+				CALLREF {
+					UNTRIPLE
+					XCHG S2
+					NEWC
+					STU 128
+					STU 128
+					STDICT
+				}
+				ROTREV
+				PUSHINT 64
+				DICTUSETB
+				SETINDEX 2
+				PUSHINT 47
+				SETGLOBVAR
+				.loc ../contracts/Game.tsol, 0
 			}
-			ROTREV
-			PUSHINT 64
-			DICTUSETB
-			SETINDEX 2
-			PUSHINT 47
-			SETGLOBVAR
-			.loc ../contracts/Game.tsol, 528
+			IFNOT
+			.loc ../contracts/Game.tsol, 532
 			DUP
 			PUSHINT 47
 			GETGLOBVAR
@@ -3476,7 +3510,7 @@ IFREFELSEREF
 			SETINDEX 2
 			PUSHINT 47
 			SETGLOBVAR
-			.loc ../contracts/Game.tsol, 530
+			.loc ../contracts/Game.tsol, 534
 			PUSH3 S0, S9, S8
 			MYADDR
 			PUSHREFSLICE {
@@ -3508,7 +3542,7 @@ IFREFELSEREF
 	.loc ../contracts/Game.tsol, 0
 }
 IF
-.loc ../contracts/Game.tsol, 535
+.loc ../contracts/Game.tsol, 539
 GETGLOB 4
 PUSHINT 0
 SETINDEXQ 2
@@ -3532,7 +3566,7 @@ ISNULL
 IFREF {
 	CALL $c4_to_c7$
 }
-.loc ../contracts/Game.tsol, 543
+.loc ../contracts/Game.tsol, 547
 LDU 64
 ENDS
 .loc ../contracts/Game.tsol, 0
@@ -3546,7 +3580,7 @@ CALLREF {
 THROW 0
 
 .macro claim_aab8ab0c_internal_macro
-.loc ../contracts/Game.tsol, 545
+.loc ../contracts/Game.tsol, 549
 PUSHINT 3006
 OVER
 PUSHINT 38
@@ -3556,7 +3590,7 @@ DICTUGET
 NULLSWAPIFNOT
 NIP
 THROWANYIFNOT
-.loc ../contracts/Game.tsol, 546
+.loc ../contracts/Game.tsol, 550
 DUP
 PUSHINT 38
 GETGLOBVAR
@@ -3609,7 +3643,7 @@ PUSHCONT {
 	TUPLE 14
 }
 IFELSE
-.loc ../contracts/Game.tsol, 548
+.loc ../contracts/Game.tsol, 552
 PUSHINT 3006
 PUSH S2
 PUSHINT 47
@@ -3620,7 +3654,7 @@ DICTUGET
 NULLSWAPIFNOT
 NIP
 THROWANYIFNOT
-.loc ../contracts/Game.tsol, 549
+.loc ../contracts/Game.tsol, 553
 OVER
 PUSHINT 47
 GETGLOBVAR
@@ -3641,20 +3675,20 @@ IFREFELSEREF
 	NEWDICT
 	TRIPLE
 }
-.loc ../contracts/Game.tsol, 553
+.loc ../contracts/Game.tsol, 557
 PUSHINT 8002
 OVER
 FIRST
 GTINT 0
 THROWANYIFNOT
-.loc ../contracts/Game.tsol, 555
+.loc ../contracts/Game.tsol, 559
 DUP
 FIRST
 SWAP
 SECOND
 ADD
 UFITS 128
-.loc ../contracts/Game.tsol, 558
+.loc ../contracts/Game.tsol, 562
 GETPARAM 7
 FIRST
 OVER
@@ -3668,7 +3702,7 @@ ADD
 UFITS 128
 GREATER
 THROWIFNOT 1060
-.loc ../contracts/Game.tsol, 561
+.loc ../contracts/Game.tsol, 565
 DUP
 DEPTH
 ADDCONST -2
@@ -3680,19 +3714,19 @@ SUB
 UFITS 128
 PUSHINT 12
 RAWRESERVE
-.loc ../contracts/Game.tsol, 565
+.loc ../contracts/Game.tsol, 569
 PUSHINT 7000
 PUSH S2
 SECOND
 EQINT 3
 THROWANYIFNOT
-.loc ../contracts/Game.tsol, 573
+.loc ../contracts/Game.tsol, 577
 PUSHINT 5005
 PUSH S2
 INDEX 11
 NOT
 THROWANYIFNOT
-.loc ../contracts/Game.tsol, 576
+.loc ../contracts/Game.tsol, 580
 OVER
 THIRD
 NEWC
@@ -3705,7 +3739,7 @@ STZEROES
 ENDC
 PUSHINT 1
 SENDRAWMSG
-.loc ../contracts/Game.tsol, 579
+.loc ../contracts/Game.tsol, 583
 OVER
 PUSHINT 38
 GETGLOBVAR
@@ -3800,7 +3834,7 @@ PUSHINT 64
 DICTUSETREF
 PUSHINT 38
 SETGLOBVAR
-.loc ../contracts/Game.tsol, 581
+.loc ../contracts/Game.tsol, 585
 DUP
 INDEX 10
 SWAP
@@ -3847,7 +3881,7 @@ ISNULL
 IFREF {
 	CALL $c4_to_c7$
 }
-.loc ../contracts/Game.tsol, 591
+.loc ../contracts/Game.tsol, 595
 LDU 32
 GETGLOB 4
 ROT
@@ -3941,7 +3975,7 @@ IFREF {
 THROW 0
 
 .macro getBoard_3264a34b_internal_macro
-.loc ../contracts/Game.tsol, 597
+.loc ../contracts/Game.tsol, 601
 GETGLOB 4
 PUSHINT 0
 SETINDEXQ 2
@@ -3967,7 +4001,7 @@ ISNULL
 IFREF {
 	CALL $c4_to_c7$
 }
-.loc ../contracts/Game.tsol, 600
+.loc ../contracts/Game.tsol, 604
 LDU 32
 GETGLOB 4
 ROT
@@ -4061,7 +4095,7 @@ IFREF {
 THROW 0
 
 .macro getRoundLatestMove_b3da4359_internal_macro
-.loc ../contracts/Game.tsol, 601
+.loc ../contracts/Game.tsol, 605
 GETGLOB 4
 PUSHINT 0
 SETINDEXQ 2
@@ -4092,7 +4126,7 @@ ISNULL
 IFREF {
 	CALL $c4_to_c7$
 }
-.loc ../contracts/Game.tsol, 604
+.loc ../contracts/Game.tsol, 608
 LDU 32
 GETGLOB 4
 ROT
@@ -4242,7 +4276,7 @@ IFREF {
 THROW 0
 
 .macro getRound_144d0229_internal_macro
-.loc ../contracts/Game.tsol, 605
+.loc ../contracts/Game.tsol, 609
 GETGLOB 4
 PUSHINT 0
 SETINDEXQ 2
@@ -4300,7 +4334,7 @@ ISNULL
 IFREF {
 	CALL $c4_to_c7$
 }
-.loc ../contracts/Game.tsol, 608
+.loc ../contracts/Game.tsol, 612
 LDU 32
 GETGLOB 4
 ROT
@@ -4391,7 +4425,7 @@ IFREF {
 THROW 0
 
 .macro getRounds_f8c68c7b_internal_macro
-.loc ../contracts/Game.tsol, 609
+.loc ../contracts/Game.tsol, 613
 DUP
 ISNULL
 PUSHCONT {
@@ -4545,15 +4579,15 @@ PUSHCONT {
 	NIP
 }
 IFJMP
-.loc ../contracts/Game.tsol, 611
+.loc ../contracts/Game.tsol, 615
 PUSHINT 0
 NEWDICT
 PAIR
-.loc ../contracts/Game.tsol, 612
+.loc ../contracts/Game.tsol, 616
 XCPU S1, S0
 ISNULL
 THROWIF 63
-.loc ../contracts/Game.tsol, 613
+.loc ../contracts/Game.tsol, 617
 PUSHINT 0
 NEWDICT
 PAIR
@@ -4740,13 +4774,13 @@ PUSHCONT {
 	NOT
 }
 PUSHCONT {
-	.loc ../contracts/Game.tsol, 614
+	.loc ../contracts/Game.tsol, 618
 	DUP
 	SECOND
 	PUSH S4
 	EQUAL
 	PUSHCONT {
-		.loc ../contracts/Game.tsol, 614
+		.loc ../contracts/Game.tsol, 618
 		PUSH2 S4, S0
 		CALLREF {
 			UNTUPLE 14
@@ -4801,7 +4835,7 @@ PUSHCONT {
 }
 WHILE
 BLKDROP 4
-.loc ../contracts/Game.tsol, 617
+.loc ../contracts/Game.tsol, 621
 GETGLOB 4
 PUSHINT 0
 SETINDEXQ 2
@@ -4817,9 +4851,9 @@ SETGLOB 4
 CALL $_checkContinuation_c7dec94d_internal_macro$
 
 .macro _checkContinuation_c7dec94d_internal_macro
-.loc ../contracts/Game.tsol, 621
+.loc ../contracts/Game.tsol, 625
 DUP2
-.loc ../contracts/Game.tsol, 624
+.loc ../contracts/Game.tsol, 628
 PUSHINT 40
 GETGLOBVAR
 SECOND
@@ -4854,7 +4888,7 @@ PUSHCONT {
 	NOT
 }
 PUSHCONT {
-	.loc ../contracts/Game.tsol, 625
+	.loc ../contracts/Game.tsol, 629
 	DUP
 	INDEX2 0, 0
 	PUSH S7
@@ -4865,15 +4899,15 @@ PUSHCONT {
 	EQUAL
 	AND
 	PUSHCONT {
-		.loc ../contracts/Game.tsol, 626
+		.loc ../contracts/Game.tsol, 630
 		DUP
 		INDEX2 1, 0
 		POP S5
-		.loc ../contracts/Game.tsol, 627
+		.loc ../contracts/Game.tsol, 631
 		DUP
 		INDEX2 1, 1
 		POP S4
-		.loc ../contracts/Game.tsol, 629
+		.loc ../contracts/Game.tsol, 633
 		PUSH2 S0, S7
 		PUSHSLICE xc00000000000000000000000007fe4fb23
 		NEWC
@@ -4906,7 +4940,7 @@ PUSHCONT {
 }
 WHILE
 BLKDROP 3
-.loc ../contracts/Game.tsol, 633
+.loc ../contracts/Game.tsol, 637
 PUSHINT 41
 GETGLOBVAR
 SECOND
@@ -4941,7 +4975,7 @@ PUSHCONT {
 	NOT
 }
 PUSHCONT {
-	.loc ../contracts/Game.tsol, 634
+	.loc ../contracts/Game.tsol, 638
 	DUP
 	INDEX2 0, 0
 	PUSH S7
@@ -4952,15 +4986,15 @@ PUSHCONT {
 	EQUAL
 	AND
 	PUSHCONT {
-		.loc ../contracts/Game.tsol, 635
+		.loc ../contracts/Game.tsol, 639
 		DUP
 		INDEX2 1, 0
 		POP S5
-		.loc ../contracts/Game.tsol, 636
+		.loc ../contracts/Game.tsol, 640
 		DUP
 		INDEX2 1, 1
 		POP S4
-		.loc ../contracts/Game.tsol, 638
+		.loc ../contracts/Game.tsol, 642
 		PUSH2 S0, S7
 		PUSHSLICE xc00000000000000000000000007fe4fb23
 		NEWC
@@ -4993,7 +5027,7 @@ PUSHCONT {
 }
 WHILE
 BLKDROP 3
-.loc ../contracts/Game.tsol, 642
+.loc ../contracts/Game.tsol, 646
 BLKDROP2 3, 2
 .loc ../contracts/Game.tsol, 0
 
@@ -5002,11 +5036,11 @@ BLKDROP2 3, 2
 CALL $_getCell_15debf1e_internal_macro$
 
 .macro _getCell_15debf1e_internal_macro
-.loc ../contracts/Game.tsol, 646
+.loc ../contracts/Game.tsol, 650
 DUP
 MODPOW2 1
 PUSHCONT {
-	.loc ../contracts/Game.tsol, 647
+	.loc ../contracts/Game.tsol, 651
 	PUSHINT 39
 	GETGLOBVAR
 	FIRST
@@ -5019,7 +5053,7 @@ PUSHCONT {
 	.loc ../contracts/Game.tsol, 0
 }
 IFNOT
-.loc ../contracts/Game.tsol, 648
+.loc ../contracts/Game.tsol, 652
 DEC
 UFITS 16
 PUSHINT 39
@@ -5036,7 +5070,7 @@ UFITS 16
 CALL $_getCoordinate_3e662623_internal_macro$
 
 .macro _getCoordinate_3e662623_internal_macro
-.loc ../contracts/Game.tsol, 652
+.loc ../contracts/Game.tsol, 656
 DUP
 PUSHCONT {
 	PUSHINT 0
@@ -5045,7 +5079,7 @@ PUSHCONT {
 	NIP
 }
 IFNOTJMP
-.loc ../contracts/Game.tsol, 654
+.loc ../contracts/Game.tsol, 658
 DUP
 DEC
 UFITS 16
@@ -5055,7 +5089,7 @@ FIRST
 DIV
 INC
 UFITS 16
-.loc ../contracts/Game.tsol, 655
+.loc ../contracts/Game.tsol, 659
 TUCK
 DEC
 UFITS 16
@@ -5066,11 +5100,11 @@ MUL
 UFITS 16
 SUB
 UFITS 16
-.loc ../contracts/Game.tsol, 657
+.loc ../contracts/Game.tsol, 661
 OVER
 MODPOW2 1
 PUSHCONT {
-	.loc ../contracts/Game.tsol, 659
+	.loc ../contracts/Game.tsol, 663
 	PUSHINT 39
 	GETGLOBVAR
 	FIRST
@@ -5081,7 +5115,7 @@ PUSHCONT {
 	.loc ../contracts/Game.tsol, 0
 }
 IFNOT
-.loc ../contracts/Game.tsol, 662
+.loc ../contracts/Game.tsol, 666
 SWAP
 PAIR
 .loc ../contracts/Game.tsol, 0
@@ -5091,21 +5125,21 @@ PAIR
 CALL $_getPath_1d89c499_internal_macro$
 
 .macro _getPath_1d89c499_internal_macro
-.loc ../contracts/Game.tsol, 666
+.loc ../contracts/Game.tsol, 670
 PUSHINT 0
 DUP
 PAIR
 DUP
-.loc ../contracts/Game.tsol, 669
+.loc ../contracts/Game.tsol, 673
 PUSHINT 0
 BLKPUSH 2, 0
-.loc ../contracts/Game.tsol, 673
+.loc ../contracts/Game.tsol, 677
 PUSHCONT {
 	DUP
 	NOT
 }
 PUSHCONT {
-	.loc ../contracts/Game.tsol, 674
+	.loc ../contracts/Game.tsol, 678
 	PUSHINT 39
 	GETGLOBVAR
 	FIRST
@@ -5115,7 +5149,7 @@ PUSHCONT {
 	PUXC S5, S-1
 	SETINDEX 0
 	POP S5
-	.loc ../contracts/Game.tsol, 675
+	.loc ../contracts/Game.tsol, 679
 	PUSHINT 39
 	GETGLOBVAR
 	SECOND
@@ -5127,7 +5161,7 @@ PUSHCONT {
 	PUXC S5, S-1
 	SETINDEX 1
 	POP S5
-	.loc ../contracts/Game.tsol, 676
+	.loc ../contracts/Game.tsol, 680
 	PUSH S4
 	FIRST
 	PUSH S5
@@ -5136,7 +5170,7 @@ PUSHCONT {
 		CALL $_getCell_15debf1e_internal_macro$
 	}
 	POP S3
-	.loc ../contracts/Game.tsol, 678
+	.loc ../contracts/Game.tsol, 682
 	PUSH S4
 	SECOND
 	PUSHINT 39
@@ -5187,16 +5221,16 @@ PUSHCONT {
 	.loc ../contracts/Game.tsol, 0
 }
 WHILE
-.loc ../contracts/Game.tsol, 682
+.loc ../contracts/Game.tsol, 686
 DROP
 FALSE
-.loc ../contracts/Game.tsol, 683
+.loc ../contracts/Game.tsol, 687
 PUSHCONT {
 	DUP
 	NOT
 }
 PUSHCONT {
-	.loc ../contracts/Game.tsol, 684
+	.loc ../contracts/Game.tsol, 688
 	PUSHINT 39
 	GETGLOBVAR
 	FIRST
@@ -5206,7 +5240,7 @@ PUSHCONT {
 	PUXC S4, S-1
 	SETINDEX 0
 	POP S4
-	.loc ../contracts/Game.tsol, 685
+	.loc ../contracts/Game.tsol, 689
 	PUSH S4
 	SECOND
 	ADDCONST -2
@@ -5217,7 +5251,7 @@ PUSHCONT {
 	PUXC S4, S-1
 	SETINDEX 1
 	POP S4
-	.loc ../contracts/Game.tsol, 686
+	.loc ../contracts/Game.tsol, 690
 	PUSH S3
 	FIRST
 	PUSH S4
@@ -5226,7 +5260,7 @@ PUSHCONT {
 		CALL $_getCell_15debf1e_internal_macro$
 	}
 	POP S2
-	.loc ../contracts/Game.tsol, 687
+	.loc ../contracts/Game.tsol, 691
 	OVER
 	PUSHINT 46
 	GETGLOBVAR
@@ -5258,11 +5292,11 @@ PUSHCONT {
 	IF
 	ISNULL
 	NIP
-	.loc ../contracts/Game.tsol, 689
+	.loc ../contracts/Game.tsol, 693
 	PUSH S5
 	EQINT 1
 	PUSHCONT {
-		.loc ../contracts/Game.tsol, 690
+		.loc ../contracts/Game.tsol, 694
 		OVER
 		NEQINT 1
 		AND
@@ -5272,7 +5306,7 @@ PUSHCONT {
 	.loc ../contracts/Game.tsol, 0
 }
 WHILE
-.loc ../contracts/Game.tsol, 694
+.loc ../contracts/Game.tsol, 698
 BLKDROP 3
 PUSHINT 0
 DUP
@@ -5280,14 +5314,14 @@ PAIR
 DUP
 PUSHINT 0
 TRIPLE
-.loc ../contracts/Game.tsol, 695
+.loc ../contracts/Game.tsol, 699
 PUSH S3
 PUSHCONT {
-	.loc ../contracts/Game.tsol, 698
+	.loc ../contracts/Game.tsol, 702
 	PUSH3 S1, S2, S3
 }
 PUSHCONT {
-	.loc ../contracts/Game.tsol, 696
+	.loc ../contracts/Game.tsol, 700
 	BLKPUSH 2, 2
 	PUSH S5
 }
@@ -5301,7 +5335,7 @@ BLKDROP2 4, 1
 CALL $_checkBoardInitialized_225232b5_internal_macro$
 
 .macro _checkBoardInitialized_225232b5_internal_macro
-.loc ../contracts/Game.tsol, 705
+.loc ../contracts/Game.tsol, 709
 PUSHINT 40
 GETGLOBVAR
 FIRST
@@ -5314,10 +5348,10 @@ GETGLOB 26
 EQUAL
 AND
 PUSHCONT {
-	.loc ../contracts/Game.tsol, 706
+	.loc ../contracts/Game.tsol, 710
 	TRUE
 	SETGLOB 28
-	.loc ../contracts/Game.tsol, 707
+	.loc ../contracts/Game.tsol, 711
 	PUSHINT 41
 	GETGLOBVAR
 	PUSHINT 40
@@ -5359,7 +5393,7 @@ ISNULL
 IFREF {
 	CALL $c4_to_c7$
 }
-.loc ../contracts/Game.tsol, 717
+.loc ../contracts/Game.tsol, 721
 LDU 64
 ENDS
 .loc ../contracts/Game.tsol, 0
@@ -5398,9 +5432,9 @@ THROW 0
 CALL $getRoundReserves_9cfc51ea_internal_macro$
 
 .macro getRoundReserves_9cfc51ea_internal_macro
-.loc ../contracts/Game.tsol, 717
+.loc ../contracts/Game.tsol, 721
 PUSHINT 0
-.loc ../contracts/Game.tsol, 718
+.loc ../contracts/Game.tsol, 722
 PUSHINT 3006
 PUSH S2
 PUSHINT 38
@@ -5410,7 +5444,7 @@ DICTUGET
 NULLSWAPIFNOT
 NIP
 THROWANYIFNOT
-.loc ../contracts/Game.tsol, 719
+.loc ../contracts/Game.tsol, 723
 PUSHINT 3006
 PUSH S2
 PUSHINT 47
@@ -5421,7 +5455,7 @@ DICTUGET
 NULLSWAPIFNOT
 NIP
 THROWANYIFNOT
-.loc ../contracts/Game.tsol, 721
+.loc ../contracts/Game.tsol, 725
 SWAP
 PUSHINT 47
 GETGLOBVAR
@@ -5442,7 +5476,7 @@ IFREFELSEREF
 	NEWDICT
 	TRIPLE
 }
-.loc ../contracts/Game.tsol, 722
+.loc ../contracts/Game.tsol, 726
 DUP
 SECOND
 OVER
@@ -5450,7 +5484,7 @@ FIRST
 ADD
 UFITS 128
 POP S2
-.loc ../contracts/Game.tsol, 723
+.loc ../contracts/Game.tsol, 727
 THIRD
 DUP
 PUSHINT 267
@@ -5471,7 +5505,7 @@ PUSHCONT {
 	NOT
 }
 PUSHCONT {
-	.loc ../contracts/Game.tsol, 724
+	.loc ../contracts/Game.tsol, 728
 	PUSH2 S4, S0
 	ADD
 	UFITS 128
@@ -5505,7 +5539,7 @@ ISNULL
 IFREF {
 	CALL $c4_to_c7$
 }
-.loc ../contracts/Game.tsol, 735
+.loc ../contracts/Game.tsol, 739
 ENDS
 .loc ../contracts/Game.tsol, 0
 CALLREF {
@@ -5543,7 +5577,7 @@ THROW 0
 CALL $getBoardReserves_01cc1250_internal_macro$
 
 .macro getBoardReserves_01cc1250_internal_macro
-.loc ../contracts/Game.tsol, 736
+.loc ../contracts/Game.tsol, 740
 PUSHINT 47
 GETGLOBVAR
 SECOND
@@ -5552,7 +5586,7 @@ GETGLOBVAR
 FIRST
 ADD
 UFITS 128
-.loc ../contracts/Game.tsol, 738
+.loc ../contracts/Game.tsol, 742
 PUSHINT 47
 GETGLOBVAR
 THIRD
@@ -5578,12 +5612,12 @@ PUSHCONT {
 	NOT
 }
 PUSHCONT {
-	.loc ../contracts/Game.tsol, 739
+	.loc ../contracts/Game.tsol, 743
 	DROP
 	CALLREF {
 		CALL $getRoundReserves_9cfc51ea_internal_macro$
 	}
-	.loc ../contracts/Game.tsol, 740
+	.loc ../contracts/Game.tsol, 744
 	PUSH S3
 	ADD
 	UFITS 128
@@ -5616,7 +5650,7 @@ BLKDROP 4
 CALL $_tryStartRound_153a7d5b_internal_macro$
 
 .macro _tryStartRound_153a7d5b_internal_macro
-.loc ../contracts/Game.tsol, 752
+.loc ../contracts/Game.tsol, 756
 PUSHINT 3006
 OVER
 PUSHINT 38
@@ -5626,7 +5660,7 @@ DICTUGET
 NULLSWAPIFNOT
 NIP
 THROWANYIFNOT
-.loc ../contracts/Game.tsol, 754
+.loc ../contracts/Game.tsol, 758
 DUP
 PUSHINT 38
 GETGLOBVAR
@@ -5679,7 +5713,7 @@ PUSHCONT {
 	TUPLE 14
 }
 IFELSE
-.loc ../contracts/Game.tsol, 757
+.loc ../contracts/Game.tsol, 761
 DUP
 SECOND
 GTINT 0
@@ -5687,7 +5721,7 @@ PUSHCONT {
 	DROP2
 }
 IFJMP
-.loc ../contracts/Game.tsol, 760
+.loc ../contracts/Game.tsol, 764
 OVER
 PUSHINT 43
 GETGLOBVAR
@@ -5699,7 +5733,7 @@ PUSHCONT {
 	DROP2
 }
 IFNOTJMP
-.loc ../contracts/Game.tsol, 763
+.loc ../contracts/Game.tsol, 767
 OVER
 PUSHINT 43
 GETGLOBVAR
@@ -5721,7 +5755,7 @@ PUSHCONT {
 	DROP2
 }
 IFJMP
-.loc ../contracts/Game.tsol, 765
+.loc ../contracts/Game.tsol, 769
 FALSE ; decl return flag
 PUSH S2
 PUSHINT 43
@@ -5743,13 +5777,13 @@ PUSH S2
 INDEX 3
 LESS
 PUSHCONT {
-	.loc ../contracts/Game.tsol, 766
+	.loc ../contracts/Game.tsol, 770
 	FALSE ; decl return flag
 	PUSH S2
 	INDEX 8
 	ISNULL
 	PUSHCONT {
-		.loc ../contracts/Game.tsol, 767
+		.loc ../contracts/Game.tsol, 771
 		FALSE ; decl return flag
 		PUSH S3
 		INDEX 8
@@ -5761,12 +5795,12 @@ PUSHCONT {
 		}
 		GREATER
 		PUSHCONT {
-			.loc ../contracts/Game.tsol, 768
+			.loc ../contracts/Game.tsol, 772
 			BLKDROP 5
 			PUSHINT 4
 		}
 		PUSHCONT {
-			.loc ../contracts/Game.tsol, 770
+			.loc ../contracts/Game.tsol, 774
 			PUSH S4
 			PUSHINT 38
 			GETGLOBVAR
@@ -5875,7 +5909,7 @@ PUSHCONT {
 	DROP
 }
 PUSHCONT {
-	.loc ../contracts/Game.tsol, 774
+	.loc ../contracts/Game.tsol, 778
 	PUSH S2
 	PUSHINT 38
 	GETGLOBVAR
@@ -5982,7 +6016,7 @@ DROP2
 CALL $_removePlayerFromRound_9d13712b_internal_macro$
 
 .macro _removePlayerFromRound_9d13712b_internal_macro
-.loc ../contracts/Game.tsol, 785
+.loc ../contracts/Game.tsol, 789
 PUSHINT 3006
 PUSH S2
 PUSHINT 38
@@ -5992,7 +6026,7 @@ DICTUGET
 NULLSWAPIFNOT
 NIP
 THROWANYIFNOT
-.loc ../contracts/Game.tsol, 786
+.loc ../contracts/Game.tsol, 790
 PUSHINT 3006
 PUSH S2
 PUSHINT 43
@@ -6002,7 +6036,7 @@ DICTUGET
 NULLSWAPIFNOT
 NIP
 THROWANYIFNOT
-.loc ../contracts/Game.tsol, 789
+.loc ../contracts/Game.tsol, 793
 DUP
 PUSHINT 42
 GETGLOBVAR
@@ -6011,7 +6045,7 @@ DICTGET
 NULLSWAPIFNOT
 NIP
 PUSHCONT {
-	.loc ../contracts/Game.tsol, 789
+	.loc ../contracts/Game.tsol, 793
 	DUP
 	PUSHINT 42
 	GETGLOBVAR
@@ -6023,7 +6057,7 @@ PUSHCONT {
 	.loc ../contracts/Game.tsol, 0
 }
 IF
-.loc ../contracts/Game.tsol, 792
+.loc ../contracts/Game.tsol, 796
 DUP
 PUSHINT 45
 GETGLOBVAR
@@ -6032,7 +6066,7 @@ DICTGET
 NULLSWAPIFNOT
 NIP
 PUSHCONT {
-	.loc ../contracts/Game.tsol, 792
+	.loc ../contracts/Game.tsol, 796
 	DUP
 	PUSHINT 45
 	GETGLOBVAR
@@ -6044,11 +6078,11 @@ PUSHCONT {
 	.loc ../contracts/Game.tsol, 0
 }
 IF
-.loc ../contracts/Game.tsol, 795
+.loc ../contracts/Game.tsol, 799
 PUSHINT 0
 NEWDICT
 PAIR
-.loc ../contracts/Game.tsol, 797
+.loc ../contracts/Game.tsol, 801
 PUSH S2
 PUSHINT 43
 GETGLOBVAR
@@ -6079,11 +6113,11 @@ PUSHCONT {
 	NOT
 }
 PUSHCONT {
-	.loc ../contracts/Game.tsol, 798
+	.loc ../contracts/Game.tsol, 802
 	PUSH2 S0, S4
 	SDEQ
 	PUSHCONT {
-		.loc ../contracts/Game.tsol, 798
+		.loc ../contracts/Game.tsol, 802
 		PUSH2 S0, S3
 		UNPAIR
 		OVER
@@ -6103,7 +6137,7 @@ PUSHCONT {
 }
 WHILE
 BLKDROP 3
-.loc ../contracts/Game.tsol, 801
+.loc ../contracts/Game.tsol, 805
 PUSH S2
 PUSHINT 43
 GETGLOBVAR
@@ -6118,12 +6152,12 @@ PUSHINT 64
 DICTUSETB
 PUSHINT 43
 SETGLOBVAR
-.loc ../contracts/Game.tsol, 804
+.loc ../contracts/Game.tsol, 808
 DUP
 FIRST
 EQINT 1
 PUSHCONT {
-	.loc ../contracts/Game.tsol, 805
+	.loc ../contracts/Game.tsol, 809
 	PUSHINT 0
 	OVER
 	SECOND
@@ -6225,7 +6259,7 @@ PUSHCONT {
 	DUP
 	PUSHINT 38
 	SETGLOBVAR
-	.loc ../contracts/Game.tsol, 806
+	.loc ../contracts/Game.tsol, 810
 	PUXC S3, S-1
 	DUP2
 	PUSHINT 64
@@ -6321,7 +6355,7 @@ PUSHCONT {
 	.loc ../contracts/Game.tsol, 0
 }
 IF
-.loc ../contracts/Game.tsol, 810
+.loc ../contracts/Game.tsol, 814
 DROP
 OVER
 PUSHINT 38
@@ -6420,7 +6454,7 @@ PUSHINT 64
 DICTUSETREF
 PUSHINT 38
 SETGLOBVAR
-.loc ../contracts/Game.tsol, 813
+.loc ../contracts/Game.tsol, 817
 OVER
 PUSHINT 47
 GETGLOBVAR
@@ -6435,18 +6469,18 @@ IFREF {
 	ENDS
 	TRIPLE
 }
-.loc ../contracts/Game.tsol, 814
+.loc ../contracts/Game.tsol, 818
 DUP
 ISNULL
 PUSHCONT {
 	BLKDROP 3
 }
 IFJMP
-.loc ../contracts/Game.tsol, 816
+.loc ../contracts/Game.tsol, 820
 DUP
 ISNULL
 THROWIF 63
-.loc ../contracts/Game.tsol, 817
+.loc ../contracts/Game.tsol, 821
 DUP2
 THIRD
 PUSHINT 267
@@ -6457,7 +6491,7 @@ PUSHCONT {
 	BLKDROP 3
 }
 IFNOTJMP
-.loc ../contracts/Game.tsol, 820
+.loc ../contracts/Game.tsol, 824
 DUP2
 THIRD
 PUSHINT 267
@@ -6467,11 +6501,11 @@ PUSHCONT {
 	PLDU 128
 }
 IF
-.loc ../contracts/Game.tsol, 821
+.loc ../contracts/Game.tsol, 825
 DUP
 GTINT 0
 PUSHCONT {
-	.loc ../contracts/Game.tsol, 822
+	.loc ../contracts/Game.tsol, 826
 	PUSH2 S0, S2
 	NEWC
 	STSLICECONST x62_
@@ -6483,7 +6517,7 @@ PUSHCONT {
 	ENDC
 	PUSHINT 0
 	SENDRAWMSG
-	.loc ../contracts/Game.tsol, 823
+	.loc ../contracts/Game.tsol, 827
 	PUSH3 S0, S2, S3
 	MYADDR
 	PUSHREFSLICE {
@@ -6508,7 +6542,7 @@ PUSHCONT {
 	.loc ../contracts/Game.tsol, 0
 }
 IF
-.loc ../contracts/Game.tsol, 826
+.loc ../contracts/Game.tsol, 830
 DROP
 DUP
 THIRD
@@ -6847,8 +6881,13 @@ PUSHCONT {
 	.loc ../contracts/abstracts/Jackpot.tsol, 0
 }
 IF
+.loc ../contracts/abstracts/Jackpot.tsol, 99
+CALLREF {
+	CALL $getAverageStepInterval_631e3b7a_internal_macro$
+}
+DUP
+SETGLOB 21
 .loc ../contracts/abstracts/Jackpot.tsol, 100
-GETGLOB 21
 GETGLOB 22
 GREATER
 PUSHCONT {
@@ -7644,7 +7683,7 @@ PUSHCONT {
 	SETGLOB 2
 	PUSHINT 0 ; timestamp
 	SETGLOB 3
-	PUSHINT 30
+	PUSHINT 10
 	SETGLOB 12
 	PUSHINT 60000
 	SETGLOB 13
@@ -8526,7 +8565,7 @@ PUSHCONT {
 		PLDU 256
 		LESS
 		PUSH S2
-		NEQINT 0
+		GTINT 1
 		AND
 	}
 	PUSHCONT {
@@ -8702,7 +8741,7 @@ PUSHCONT {
 		PLDU 256
 		LESS
 		PUSH S2
-		NEQINT 0
+		GTINT 1
 		AND
 	}
 	PUSHCONT {

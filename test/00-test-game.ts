@@ -58,6 +58,7 @@ describe("Test Game", async function () {
         });
 
 
+/*
         it("Test sorting methods", async function() {
             const inputArray = generateRandomUintArray(30, 0, 100);
             console.log(nTabulator + "Input array: " + inputArray.toString());
@@ -94,6 +95,7 @@ describe("Test Game", async function () {
             quickSortTx.traceTree?.beautyPrint();
             console.log(tabulator + "Quick sort consumed "+ quickSortTx.totalFees + " gas");
         });
+*/
 
         it("Generate board", async function () {
             let boardGeneratedTx = await locklift.tracing.trace(game

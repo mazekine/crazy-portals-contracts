@@ -344,7 +344,7 @@ contract Game is IGame, Ownable, Cashback, Jackpot {
 
         //  TODO: Autostart
         //uint128 totalBalance = address(this).balance;
-        tvm.rawReserve(msg.value - TX_STORAGE_FEE, 1);  //  Reserve everything except the message value less storage fee and rake value
+        tvm.rawReserve(address(this).balance - msg.value + TX_STORAGE_FEE, 0);  //  Reserve everything except the message value less storage fee and rake value
 
         address player = msg.sender;
 
@@ -515,14 +515,18 @@ contract Game is IGame, Ownable, Cashback, Jackpot {
                     boardTreasury.jackpot = 0;
 
                     //  Add round treasury if it doesn't exist yet
-                    boardTreasury.roundTreasury.getAdd(roundId, RoundTreasury({
-                        entranceFee: 0,
-                        prize: 0,
-                        playerJackpot: emptyMap
-                    }));
+                    if(!boardTreasury.roundTreasury.exists(roundId)){
+                        boardTreasury.roundTreasury[roundId] = RoundTreasury({
+                            entranceFee: 0,
+                            prize: 0,
+                            playerJackpot: emptyMap
+                        });
+                    }
 
                     //  Add player jackpot accrual if it doesn't exist yet
-                    boardTreasury.roundTreasury[roundId].playerJackpot.getAdd(player, 0);
+                    if(!boardTreasury.roundTreasury[roundId].playerJackpot.exists(player)) {
+                        boardTreasury.roundTreasury[roundId].playerJackpot[player] = 0;
+                    }
 
                     //  Increase player's jackpot
                     boardTreasury.roundTreasury[roundId].playerJackpot[player] += jackpot;
