@@ -276,6 +276,92 @@ describe("Test Game", async function () {
             console.log(tabulator + "Game balance: " + locklift.utils.fromNano(await locklift.provider.getBalance(game.address)) + " EVER");
         });
 
+        it("Set jackpot averaged periods", async function () {
+            const jpAveragedPeriodsTx = await locklift.tracing.trace(game
+                .methods
+                .setJackpotAveragedPeriods({
+                    qty: 5
+                })
+                .send({
+                    from: deployer,
+                    amount: locklift.utils.toNano(0.2),
+                    bounce: true
+                }), {raise: true}
+            )
+
+            expect(jpAveragedPeriodsTx.traceTree).emit("JackpotAveragedPeriodsUpdated")
+                .and.not.to.have.error();
+
+            const jpAveragedPeriods = await game.methods.jackpotAveragedPeriods().call();
+            expect(jpAveragedPeriods.jackpotAveragedPeriods).to.be.equal("5", "Incorrect averaged periods value");
+        })
+
+        it("Set jackpot minimum probability", async function () {
+            const MIN_PROBABILITY = 1000;
+
+            const jpMinProbabilityTx = await locklift.tracing.trace(game
+                .methods
+                .setJackpotMinProbability({
+                    p: MIN_PROBABILITY
+                })
+                .send({
+                    from: deployer,
+                    amount: locklift.utils.toNano(0.2),
+                    bounce: true
+                }), {raise: true}
+            )
+
+            expect(jpMinProbabilityTx.traceTree).emit("JackpotMinProbabilityUpdated")
+                .and.not.to.have.error();
+
+            const jpMinProbability = await game.methods.jackpotMinProbability().call();
+            expect(jpMinProbability.jackpotMinProbability).to.be.equal(MIN_PROBABILITY.toString(), "Incorrect minimum jackpot probability value");
+        })
+
+        it("Set jackpot maximum probability", async function () {
+            const MAX_PROBABILITY = 99;
+
+            const jpMaxProbabilityTx = await locklift.tracing.trace(game
+                .methods
+                .setJackpotMaxProbability({
+                    p: MAX_PROBABILITY
+                })
+                .send({
+                    from: deployer,
+                    amount: locklift.utils.toNano(0.2),
+                    bounce: true
+                }), {raise: true}
+            )
+
+            expect(jpMaxProbabilityTx.traceTree).emit("JackpotMaxProbabilityUpdated")
+                .and.not.to.have.error();
+
+            const jpMaxProbability = await game.methods.jackpotMaxProbability().call();
+            expect(jpMaxProbability.jackpotMaxProbability).to.be.equal(MAX_PROBABILITY.toString(), "Incorrect maximum jackpot probability value");
+        })
+
+        it("Set jackpot probability freeze period", async function () {
+            const FREEZE_PERIOD = 30;
+
+            const jpProbabilityFreezeTx = await locklift.tracing.trace(game
+                .methods
+                .setJackpotProbabilityFreezePeriod({
+                    period: FREEZE_PERIOD
+                })
+                .send({
+                    from: deployer,
+                    amount: locklift.utils.toNano(0.2),
+                    bounce: true
+                }), {raise: true}
+            )
+
+            expect(jpProbabilityFreezeTx.traceTree).emit("JackpotFreezePeriodUpdated")
+                .and.not.to.have.error();
+
+            const jpProbabilityFreezePeriod = await game.methods.jackpotProbabilityFreezePeriod().call();
+            expect(jpProbabilityFreezePeriod.jackpotProbabilityFreezePeriod).to.be.equal(FREEZE_PERIOD.toString(), "Incorrect jackpot probability freeze period");
+        })
+
         it("Create round", async function () {
             const preRounds: GetRoundsResponse = await game.methods.getRounds({ answerId: 0, status: 0 }).call();
 

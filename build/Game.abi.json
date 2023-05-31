@@ -31,7 +31,7 @@
 			]
 		},
 		{
-			"name": "setMaxRoundTimeMs",
+			"name": "setMaxRoundTimeSec",
 			"inputs": [
 				{"name":"ms","type":"uint64"}
 			],
@@ -39,7 +39,7 @@
 			]
 		},
 		{
-			"name": "setMaxMoveTimeMs",
+			"name": "setMaxMoveTimeSec",
 			"inputs": [
 				{"name":"ms","type":"uint64"}
 			],
@@ -79,7 +79,7 @@
 			]
 		},
 		{
-			"name": "setAutostartMs",
+			"name": "setAutostartSec",
 			"inputs": [
 				{"name":"ms","type":"optional(uint64)"}
 			],
@@ -280,19 +280,19 @@
 			]
 		},
 		{
-			"name": "minJackpotProbability",
+			"name": "jackpotMinProbability",
 			"inputs": [
 			],
 			"outputs": [
-				{"name":"minJackpotProbability","type":"uint64"}
+				{"name":"jackpotMinProbability","type":"uint64"}
 			]
 		},
 		{
-			"name": "maxJackpotProbability",
+			"name": "jackpotMaxProbability",
 			"inputs": [
 			],
 			"outputs": [
-				{"name":"maxJackpotProbability","type":"uint64"}
+				{"name":"jackpotMaxProbability","type":"uint64"}
 			]
 		},
 		{
@@ -618,7 +618,7 @@
 			]
 		},
 		{
-			"name": "MaxRoundTimeMsUpdated",
+			"name": "MaxRoundTimeSecUpdated",
 			"inputs": [
 				{"name":"board","type":"address"},
 				{"name":"oldValue","type":"uint64"},
@@ -628,7 +628,7 @@
 			]
 		},
 		{
-			"name": "MaxMoveTimeMsUpdated",
+			"name": "MaxMoveTimeSecUpdated",
 			"inputs": [
 				{"name":"board","type":"address"},
 				{"name":"oldValue","type":"uint64"},
@@ -638,7 +638,7 @@
 			]
 		},
 		{
-			"name": "RoundAutostartMsUpdated",
+			"name": "RoundAutostartSecUpdated",
 			"inputs": [
 				{"name":"board","type":"address"},
 				{"name":"oldValue","type":"optional(uint64)"},
@@ -709,8 +709,8 @@
 		{"name":"_initialized","type":"bool"},
 		{"name":"jackpotAveragedPeriods","type":"uint16"},
 		{"name":"jackpotProbabilityFreezePeriod","type":"uint64"},
-		{"name":"minJackpotProbability","type":"uint64"},
-		{"name":"maxJackpotProbability","type":"uint64"},
+		{"name":"jackpotMinProbability","type":"uint64"},
+		{"name":"jackpotMaxProbability","type":"uint64"},
 		{"name":"curJackpotProbability","type":"uint64"},
 		{"name":"jackpotWinningNumber","type":"uint64"},
 		{"name":"jackpotFreezeProbabilityUntil","type":"uint64"},

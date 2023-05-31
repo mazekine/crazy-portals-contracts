@@ -13,9 +13,9 @@ contract Game is IGame, Ownable, Cashback, Jackpot {
     uint64  public static nonce;
 
     //  Default configurations
-    uint64  private constant MAX_ROUND_DURATION_MS_DEFAULT = 30 * 60 * 1000; //  30 minutes
-    uint64  private constant MOVE_DURATION_MS_DEFAULT      =  1 * 60 * 1000; //  1 minute
-    uint64  private constant ROUND_AUTOSTART_MS_DEFAULT    =  5 * 60 * 1000; //  5 minutes
+    uint64  private constant MAX_ROUND_DURATION_SEC_DEFAULT =   30 * 60;    //  30 minutes
+    uint64  private constant MOVE_DURATION_SEC_DEFAULT =        1 * 60;     //  1 minute
+    uint64  private constant ROUND_AUTOSTART_SEC_DEFAULT =      5 * 60;     //  5 minutes
     uint128 private constant TX_STORAGE_FEE = 0.05 ever;                      //  Default estimation of storage fee
     uint128 private constant RAKE_DEFAULT = 0.01 ever;                       //  Default rake rate for a game
     uint8   private constant JACKPOT_RATE_DEFAULT = 0;                       //  Default jackpot rate
@@ -27,9 +27,9 @@ contract Game is IGame, Ownable, Cashback, Jackpot {
     uint16  public blueBeamsNumber;                                     // Number of blue portals to generate on board
     uint16  public redBeamsNumber;                                      // Number of red portals to generate on board
     bool    public boardInitialized;                                    // Indicates if the board was generated already
-    uint64  public maxRoundDurationMs = MAX_ROUND_DURATION_MS_DEFAULT;  // Maximum round duration in milliseconds
-    uint64  public maxMoveDurationMs = MOVE_DURATION_MS_DEFAULT;        // Maximum time for a step within round, in milliseconds
-    optional(uint64)  public roundAutostartMs = ROUND_AUTOSTART_MS_DEFAULT;       // The period in milliseconds after creation of the round when it can start
+    uint64  public maxRoundDurationMs = MAX_ROUND_DURATION_SEC_DEFAULT;  // Maximum round duration in seconds
+    uint64  public maxMoveDurationMs = MOVE_DURATION_SEC_DEFAULT;        // Maximum time for a step within round, in seconds
+    optional(uint64)  public roundAutostartMs = ROUND_AUTOSTART_SEC_DEFAULT;       // The period in seconds after creation of the round when it can start
     uint128 public prizeFundPerRound = PRIZE_FUND_PER_ROUND_DEFAULT;    // Prize fund setting per round
     uint16  public maxPlayers = 4;                                      // Number of players in a round
     uint128 public entryStake;                                          // Entry stake setting per round
@@ -137,11 +137,11 @@ contract Game is IGame, Ownable, Cashback, Jackpot {
         @dev    Affects only future rounds
         @param  ms  Time in milliseconds
     */
-    function setMaxRoundTimeMs(uint64 ms) external override onlyOwner reservable cashback {
+    function setMaxRoundTimeSec(uint64 ms) external override onlyOwner reservable cashback {
         uint64 oldVal = maxRoundDurationMs;
         maxRoundDurationMs = ms;
 
-        emit MaxRoundTimeMsUpdated(address(this), oldVal, maxRoundDurationMs);
+        emit MaxRoundTimeSecUpdated(address(this), oldVal, maxRoundDurationMs);
     }
 
     /**
@@ -151,11 +151,11 @@ contract Game is IGame, Ownable, Cashback, Jackpot {
         @dev    Affects only future rounds
         @param  ms  Time in milliseconds
     */
-    function setMaxMoveTimeMs(uint64 ms) external override onlyOwner reservable cashback {
+    function setMaxMoveTimeSec(uint64 ms) external override onlyOwner reservable cashback {
         uint64 oldVal = maxMoveDurationMs;
         maxMoveDurationMs = ms;
 
-        emit MaxMoveTimeMsUpdated(address(this), oldVal, maxMoveDurationMs);
+        emit MaxMoveTimeSecUpdated(address(this), oldVal, maxMoveDurationMs);
     }
 
     /**
@@ -213,11 +213,11 @@ contract Game is IGame, Ownable, Cashback, Jackpot {
     /**
             Sets the period in milliseconds after the creation of the round after which it will start even if it hasn't obtained enough players
         */
-    function setAutostartMs(optional(uint64) ms) external override onlyOwner reservable cashback {
+    function setAutostartSec(optional(uint64) ms) external override onlyOwner reservable cashback {
         optional(uint64) oldVal = roundAutostartMs;
         roundAutostartMs = ms;
 
-        emit RoundAutostartMsUpdated(address(this), oldVal, roundAutostartMs);
+        emit RoundAutostartSecUpdated(address(this), oldVal, roundAutostartMs);
     }
 
     /**
@@ -345,6 +345,7 @@ contract Game is IGame, Ownable, Cashback, Jackpot {
         //  TODO: Autostart
         //uint128 totalBalance = address(this).balance;
         tvm.rawReserve(address(this).balance - msg.value + TX_STORAGE_FEE, 0);  //  Reserve everything except the message value less storage fee and rake value
+        //tvm.rawReserve(msg.value - TX_STORAGE_FEE, 1);
 
         address player = msg.sender;
 

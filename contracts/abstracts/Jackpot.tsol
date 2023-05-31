@@ -10,15 +10,15 @@ abstract contract Jackpot is IJackpot, Ownable, Cashback {
     using ArrayHelper for uint[];
 
     uint16                  constant AVERAGED_PERIODS_DEFAULT = 10;                 //  30 rolls
-    uint64                  constant PROBABILITY_FREEZE_PERIOD_DEFAULT = 60 * 1000; //  1 minute
+    uint64                  constant PROBABILITY_FREEZE_PERIOD_DEFAULT = 60;        //  1 minute
     uint64                  constant MIN_PROBABILITY_DENOMINATOR = 10_000_000;      //  0.00001%
     uint64                  constant MAX_PROBABILITY_DENOMINATOR = 100;             //  1%
 
     uint16                  public jackpotAveragedPeriods = AVERAGED_PERIODS_DEFAULT;
     uint64                  public jackpotProbabilityFreezePeriod = PROBABILITY_FREEZE_PERIOD_DEFAULT;
-    uint64                  public minJackpotProbability = MIN_PROBABILITY_DENOMINATOR;
-    uint64                  public maxJackpotProbability = MAX_PROBABILITY_DENOMINATOR;
-    uint64                  public curJackpotProbability = maxJackpotProbability;
+    uint64                  public jackpotMinProbability = MIN_PROBABILITY_DENOMINATOR;
+    uint64                  public jackpotMaxProbability = MAX_PROBABILITY_DENOMINATOR;
+    uint64                  public curJackpotProbability = jackpotMaxProbability;
     uint64                         jackpotWinningNumber;
     uint64                         jackpotFreezeProbabilityUntil;
 
@@ -37,13 +37,15 @@ abstract contract Jackpot is IJackpot, Ownable, Cashback {
         jackpotFreezeProbabilityUntil = latestStepTimestamp;
     }
 
-    function setJackpotAveragedPeriods(uint16 qty) external override onlyOwner cashback {
-        tvm.rawReserve(msg.value - 0.05 ever, 12);
+    function setJackpotAveragedPeriods(uint16 qty) external override onlyOwner {
+        //tvm.rawReserve(msg.value - 0.05 ever, 12);
 
         require(qty > 0, BaseErrorCodes.NOT_ALLOWED);
         uint16 oldVal = jackpotAveragedPeriods;
         jackpotAveragedPeriods = qty;
         emit JackpotAveragedPeriodsUpdated(address(this), oldVal, jackpotAveragedPeriods);
+
+        msg.sender.transfer({value: 0, flag: MsgFlag.REMAINING_GAS, bounce: false});
     }
 
     /**
@@ -51,14 +53,14 @@ abstract contract Jackpot is IJackpot, Ownable, Cashback {
 
         @param  p   The probability denominator, i.e. the lesser it is, the higher the chance of the jackpot will be
     */
-    function setJackpotMaxProbability(uint64 p) external override onlyOwner cashback {
-        tvm.rawReserve(msg.value - 0.05 ever, 12);
-
+    function setJackpotMaxProbability(uint64 p) external override onlyOwner {
         require(p > 0, BaseErrorCodes.DIVISION_BY_ZERO);
 
-        uint64 oldVal = maxJackpotProbability;
-        maxJackpotProbability = p;
-        emit JackpotMaxProbabilityUpdated(address(this), oldVal, maxJackpotProbability);
+        uint64 oldVal = jackpotMaxProbability;
+        jackpotMaxProbability = p;
+        emit JackpotMaxProbabilityUpdated(address(this), oldVal, jackpotMaxProbability);
+
+        msg.sender.transfer({value: 0, flag: MsgFlag.REMAINING_GAS, bounce: false});
     }
 
     /**
@@ -66,23 +68,23 @@ abstract contract Jackpot is IJackpot, Ownable, Cashback {
 
         @param  p   The probability denominator, i.e. the greater it is, the lower the chance of the jackpot will be
     */
-    function setJackpotMinProbability(uint64 p) external override onlyOwner cashback {
-        tvm.rawReserve(msg.value - 0.05 ever, 12);
-
+    function setJackpotMinProbability(uint64 p) external override onlyOwner {
         require(p > 0, BaseErrorCodes.DIVISION_BY_ZERO);
-        require(p > maxJackpotProbability, BaseErrorCodes.NOT_ALLOWED);
+        require(p > jackpotMaxProbability, BaseErrorCodes.NOT_ALLOWED);
 
-        uint64 oldVal = minJackpotProbability;
-        minJackpotProbability = p;
-        emit JackpotMinProbabilityUpdated(address(this), oldVal, minJackpotProbability);
+        uint64 oldVal = jackpotMinProbability;
+        jackpotMinProbability = p;
+        emit JackpotMinProbabilityUpdated(address(this), oldVal, jackpotMinProbability);
+
+        msg.sender.transfer({value: 0, flag: MsgFlag.REMAINING_GAS, bounce: false});
     }
 
-    function setJackpotProbabilityFreezePeriod(uint64 period) external override onlyOwner cashback {
-        tvm.rawReserve(msg.value - 0.05 ever, 12);
-
+    function setJackpotProbabilityFreezePeriod(uint64 period) external override onlyOwner {
         uint64 oldVal = jackpotProbabilityFreezePeriod;
         jackpotProbabilityFreezePeriod = period;
         emit JackpotFreezePeriodUpdated(address(this), oldVal, jackpotProbabilityFreezePeriod);
+
+        msg.sender.transfer({value: 0, flag: MsgFlag.REMAINING_GAS, bounce: false});
     }
 
     function registerStepInterval(uint64 timestamp) internal {
@@ -113,10 +115,10 @@ abstract contract Jackpot is IJackpot, Ownable, Cashback {
 
         //  Get average step interval to assess the board popularity and set a proper probability
         uint64 curInterval = averageStepInterval;
-        uint64 p = maxJackpotProbability + math.muldiv(minJackpotProbability - maxJackpotProbability, curInterval, maxAverageInterval);
+        uint64 p = jackpotMaxProbability + math.muldiv(jackpotMinProbability - jackpotMaxProbability, curInterval, maxAverageInterval);
 
         //  Limit the minimum probability to avoid overflow and increase fairness of the distribution
-        if (p > minJackpotProbability) p = minJackpotProbability;
+        if (p > jackpotMinProbability) p = jackpotMinProbability;
 
         if (p != curJackpotProbability) {
             //  Update variables and emit event
