@@ -33,7 +33,7 @@
 		{
 			"name": "setMaxRoundTimeSec",
 			"inputs": [
-				{"name":"ms","type":"uint64"}
+				{"name":"sec","type":"uint64"}
 			],
 			"outputs": [
 			]
@@ -41,7 +41,7 @@
 		{
 			"name": "setMaxMoveTimeSec",
 			"inputs": [
-				{"name":"ms","type":"uint64"}
+				{"name":"sec","type":"uint64"}
 			],
 			"outputs": [
 			]
@@ -81,7 +81,7 @@
 		{
 			"name": "setAutostartSec",
 			"inputs": [
-				{"name":"ms","type":"optional(uint64)"}
+				{"name":"sec","type":"optional(uint64)"}
 			],
 			"outputs": [
 			]
@@ -106,21 +106,16 @@
 		{
 			"name": "joinRound",
 			"inputs": [
-				{"name":"answerId","type":"uint32"},
 				{"name":"roundId","type":"uint64"}
 			],
 			"outputs": [
-				{"name":"result","type":"bool"}
 			]
 		},
 		{
 			"name": "roll",
 			"inputs": [
-				{"name":"answerId","type":"uint32"}
 			],
 			"outputs": [
-				{"name":"dice","type":"uint16"},
-				{"components":[{"name":"x","type":"uint16"},{"name":"y","type":"uint16"}],"name":"newPosition","type":"tuple"}
 			]
 		},
 		{
@@ -344,27 +339,27 @@
 			]
 		},
 		{
-			"name": "maxRoundDurationMs",
+			"name": "maxRoundDurationSec",
 			"inputs": [
 			],
 			"outputs": [
-				{"name":"maxRoundDurationMs","type":"uint64"}
+				{"name":"maxRoundDurationSec","type":"uint64"}
 			]
 		},
 		{
-			"name": "maxMoveDurationMs",
+			"name": "maxMoveDurationSec",
 			"inputs": [
 			],
 			"outputs": [
-				{"name":"maxMoveDurationMs","type":"uint64"}
+				{"name":"maxMoveDurationSec","type":"uint64"}
 			]
 		},
 		{
-			"name": "roundAutostartMs",
+			"name": "roundAutostartSec",
 			"inputs": [
 			],
 			"outputs": [
-				{"name":"roundAutostartMs","type":"optional(uint64)"}
+				{"name":"roundAutostartSec","type":"optional(uint64)"}
 			]
 		},
 		{
@@ -724,9 +719,9 @@
 		{"name":"blueBeamsNumber","type":"uint16"},
 		{"name":"redBeamsNumber","type":"uint16"},
 		{"name":"boardInitialized","type":"bool"},
-		{"name":"maxRoundDurationMs","type":"uint64"},
-		{"name":"maxMoveDurationMs","type":"uint64"},
-		{"name":"roundAutostartMs","type":"optional(uint64)"},
+		{"name":"maxRoundDurationSec","type":"uint64"},
+		{"name":"maxMoveDurationSec","type":"uint64"},
+		{"name":"roundAutostartSec","type":"optional(uint64)"},
 		{"name":"prizeFundPerRound","type":"uint128"},
 		{"name":"maxPlayers","type":"uint16"},
 		{"name":"entryStake","type":"uint128"},

@@ -224,7 +224,7 @@ describe("Test Game", async function () {
             await locklift.giver.sendTo(game.address, locklift.utils.toNano(PRIZE_FUND));
 
             const prizeFund = await game.methods.prizeFundPerRound().call();
-        expect(prizeFund.prizeFundPerRound).to.be.equal(locklift.utils.toNano(PRIZE_FUND), "Wrong prize fund");
+            expect(prizeFund.prizeFundPerRound).to.be.equal(locklift.utils.toNano(PRIZE_FUND), "Wrong prize fund");
 
             console.log(nTabulator + "Prize fund set to " + PRIZE_FUND + " EVER");
             console.log(tabulator + "Game balance: " + locklift.utils.fromNano(await locklift.provider.getBalance(game.address)) + " EVER");
@@ -402,8 +402,7 @@ describe("Test Game", async function () {
             let joinRoundTx = await locklift.tracing.trace(game
                 .methods
                 .joinRound({
-                    roundId: 0,
-                    answerId: 0
+                    roundId: 0
                 })
                 .send({
                     from: deployer,
@@ -417,8 +416,7 @@ describe("Test Game", async function () {
             joinRoundTx = await locklift.tracing.trace(game
                 .methods
                 .joinRound({
-                    roundId: roundId,
-                    answerId: 0
+                    roundId: roundId
                 })
                 .send({
                     from: deployer,
@@ -436,8 +434,7 @@ describe("Test Game", async function () {
             joinRoundTx = await locklift.tracing.trace(game
                 .methods
                 .joinRound({
-                    roundId: roundId,
-                    answerId: 0
+                    roundId: roundId
                 })
                 .send({
                     from: deployer,
@@ -451,8 +448,7 @@ describe("Test Game", async function () {
             joinRoundTx = await locklift.tracing.trace(game
                 .methods
                 .joinRound({
-                    roundId: roundId,
-                    answerId: 0
+                    roundId: roundId
                 })
                 .send({
                     from: opponent,
@@ -502,7 +498,7 @@ describe("Test Game", async function () {
 
                 let rollFirstTx = await locklift.tracing.trace(game
                     .methods
-                    .roll({answerId: 0})
+                    .roll({})
                     .send({
                         from: deployer,
                         amount: ROLL_GAS,
@@ -515,7 +511,7 @@ describe("Test Game", async function () {
 
                 let rollSecondTx  = await locklift.tracing.trace(game
                     .methods
-                    .roll({answerId: 0})
+                    .roll({})
                     .send({
                         from: opponent,
                         amount: ROLL_GAS,

@@ -1,0 +1,29 @@
+{
+  "board": {
+    "size": 10,
+    "seed": null,
+    "maxBlueBeams": 8,
+    "maxRedBeams": 8,
+    "owner": "0:c1ae39628c7a9b22f7da6522c6daa609290bb6394be1d31292d83b85be4baeb7"
+  },
+  "round": {
+    "maxPlayers": 2,
+    "prizeFund": 1000000000,
+    "entryStake": null,
+    "rake": null,
+    "giveUpAllowed": true,
+    "time": {
+      "maxRoundTime": null,
+      "maxMoveTime": null,
+      "autostart": null
+    },
+    "jackpot": {
+      "rate": 50,
+      "averagedPeriods": null,
+      "maxProbability": 100,
+      "minProbability": 1000,
+      "probabilityFreezePeriod": null
+    },
+    "createFirstRound": true
+  }
+}

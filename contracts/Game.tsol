@@ -27,9 +27,9 @@ contract Game is IGame, Ownable, Cashback, Jackpot {
     uint16  public blueBeamsNumber;                                     // Number of blue portals to generate on board
     uint16  public redBeamsNumber;                                      // Number of red portals to generate on board
     bool    public boardInitialized;                                    // Indicates if the board was generated already
-    uint64  public maxRoundDurationMs = MAX_ROUND_DURATION_SEC_DEFAULT;  // Maximum round duration in seconds
-    uint64  public maxMoveDurationMs = MOVE_DURATION_SEC_DEFAULT;        // Maximum time for a step within round, in seconds
-    optional(uint64)  public roundAutostartMs = ROUND_AUTOSTART_SEC_DEFAULT;       // The period in seconds after creation of the round when it can start
+    uint64  public maxRoundDurationSec = MAX_ROUND_DURATION_SEC_DEFAULT;  // Maximum round duration in seconds
+    uint64  public maxMoveDurationSec = MOVE_DURATION_SEC_DEFAULT;        // Maximum time for a step within round, in seconds
+    optional(uint64)  public roundAutostartSec = ROUND_AUTOSTART_SEC_DEFAULT;       // The period in seconds after creation of the round when it can start
     uint128 public prizeFundPerRound = PRIZE_FUND_PER_ROUND_DEFAULT;    // Prize fund setting per round
     uint16  public maxPlayers = 4;                                      // Number of players in a round
     uint128 public entryStake;                                          // Entry stake setting per round
@@ -135,13 +135,13 @@ contract Game is IGame, Ownable, Cashback, Jackpot {
         The round will expire after the specified time passes since the start
 
         @dev    Affects only future rounds
-        @param  ms  Time in milliseconds
+        @param  sec  Time in seconds
     */
-    function setMaxRoundTimeSec(uint64 ms) external override onlyOwner reservable cashback {
-        uint64 oldVal = maxRoundDurationMs;
-        maxRoundDurationMs = ms;
+    function setMaxRoundTimeSec(uint64 sec) external override onlyOwner reservable cashback {
+        uint64 oldVal = maxRoundDurationSec;
+        maxRoundDurationSec = sec;
 
-        emit MaxRoundTimeSecUpdated(address(this), oldVal, maxRoundDurationMs);
+        emit MaxRoundTimeSecUpdated(address(this), oldVal, maxRoundDurationSec);
     }
 
     /**
@@ -149,13 +149,13 @@ contract Game is IGame, Ownable, Cashback, Jackpot {
         Players can make only one step within a move, and this parameter indicates the move expiry interval
 
         @dev    Affects only future rounds
-        @param  ms  Time in milliseconds
+        @param  sec  Time in seconds
     */
-    function setMaxMoveTimeSec(uint64 ms) external override onlyOwner reservable cashback {
-        uint64 oldVal = maxMoveDurationMs;
-        maxMoveDurationMs = ms;
+    function setMaxMoveTimeSec(uint64 sec) external override onlyOwner reservable cashback {
+        uint64 oldVal = maxMoveDurationSec;
+        maxMoveDurationSec = sec;
 
-        emit MaxMoveTimeSecUpdated(address(this), oldVal, maxMoveDurationMs);
+        emit MaxMoveTimeSecUpdated(address(this), oldVal, maxMoveDurationSec);
     }
 
     /**
@@ -213,11 +213,11 @@ contract Game is IGame, Ownable, Cashback, Jackpot {
     /**
             Sets the period in milliseconds after the creation of the round after which it will start even if it hasn't obtained enough players
         */
-    function setAutostartSec(optional(uint64) ms) external override onlyOwner reservable cashback {
-        optional(uint64) oldVal = roundAutostartMs;
-        roundAutostartMs = ms;
+    function setAutostartSec(optional(uint64) sec) external override onlyOwner reservable cashback {
+        optional(uint64) oldVal = roundAutostartSec;
+        roundAutostartSec = sec;
 
-        emit RoundAutostartSecUpdated(address(this), oldVal, roundAutostartMs);
+        emit RoundAutostartSecUpdated(address(this), oldVal, roundAutostartSec);
     }
 
     /**
@@ -239,15 +239,15 @@ contract Game is IGame, Ownable, Cashback, Jackpot {
     */
     function createRound()
     external
-    responsible
+    //responsible
     override
-    returns (Round round) {
+    /*returns (Round round)*/ {
         require(boardInitialized, BaseErrorCodes.TOO_EARLY);
 
         uint64 roundId = Utils._getTimestamp();
         require(!rounds.exists(roundId), BaseErrorCodes.ITEM_EXISTS);
 
-        optional(uint64) autostart = roundAutostartMs;
+        optional(uint64) autostart = roundAutostartSec;
         if(autostart.hasValue()) {
             autostart = autostart.get() + roundId;
         }
@@ -260,9 +260,9 @@ contract Game is IGame, Ownable, Cashback, Jackpot {
             maxPlayers,
             giveUpAllowed,
 
-            roundId + maxRoundDurationMs,
-            maxRoundDurationMs,
-            maxMoveDurationMs,
+            roundId + maxRoundDurationSec,
+            maxRoundDurationSec,
+            maxMoveDurationSec,
             autostart,
 
             entryStake,
@@ -277,21 +277,21 @@ contract Game is IGame, Ownable, Cashback, Jackpot {
 
         emit RoundCreated(address(this), roundId);
 
-        return {value: 0, flag: MsgFlag.REMAINING_GAS, bounce: false} newRound;
+        msg.sender.transfer({value: 0, flag: MsgFlag.REMAINING_GAS, bounce: false});
+        //return {value: 0, flag: MsgFlag.REMAINING_GAS, bounce: false} newRound;
     }
 
     /**
         Joins the requesting player to the specified round
 
         @param      roundId Round identifier
-        @return     result  Status of joining
     */
     function joinRound(uint64 roundId)
     external
-    responsible
+    //responsible
     override
-    returns (bool result) {
-        tvm.rawReserve(msg.value - TX_STORAGE_FEE, 12); //  Reserve all except message value less storage fee
+    /*returns (bool result)*/ {
+        tvm.rawReserve(address(this).balance - msg.value + TX_STORAGE_FEE, 0); //  Reserve all except message value less storage fee
 
         require(rounds.exists(roundId), BaseErrorCodes.ITEM_NOT_FOUND);
         require(roundPlayers[roundId].length < rounds[roundId].maxPlayers, BaseErrorCodes.NOT_ALLOWED);
@@ -326,20 +326,19 @@ contract Game is IGame, Ownable, Cashback, Jackpot {
 
         emit RoundJoined(address(this), roundId, player);
 
-        return {value: 0, bounce: false, flag: MsgFlag.REMAINING_GAS} (true);
+        msg.sender.transfer({value: 0, bounce: false, flag: MsgFlag.ALL_NOT_RESERVED});
+
+        //return {value: 0, bounce: false, flag: MsgFlag.REMAINING_GAS} (true);
     }
 
     /**
         Rolls a dice and makes a move on generated board
-
-        @return dice        Value of the received dice
-        @return newPosition New location where the player moved after the step
     */
     function roll()
     external
-    responsible
+    //responsible
     override
-    returns (uint16 dice, Coordinate newPosition) {
+    /*returns (uint16 dice, Coordinate newPosition)*/ {
         require(boardInitialized, BaseErrorCodes.TOO_EARLY);
 
         //  TODO: Autostart
@@ -389,7 +388,7 @@ contract Game is IGame, Ownable, Cashback, Jackpot {
             //  Check that all players have joined
             require(roundPlayers[roundId].length == round.maxPlayers, BaseErrorCodes.NOT_ALL_PLAYERS_JOINED);
 
-            round.status = RoundStatus.Active;
+            rounds[roundId].status = RoundStatus.Active;
             tvm.commit();
         }
 
@@ -412,7 +411,7 @@ contract Game is IGame, Ownable, Cashback, Jackpot {
             move = roundMoves[roundId];
 
             if(
-                (move.expiresAt < timestamp) ||                   //  If move has expired
+                (move.expiresAt < timestamp) ||                         //  If move has expired
                 (move.playerSteps.keys().length == round.maxPlayers)    //  or all players have moved
             ) {
                 move = Move(timestamp + round.moveDuration, playersMoved);
@@ -462,7 +461,9 @@ contract Game is IGame, Ownable, Cashback, Jackpot {
             roundMoves[roundId] = move;
 
             emit RoundFinished(address(this), roundId, player);
-            return {value: 0, flag: MsgFlag.ALL_NOT_RESERVED, bounce: false} (diceVal, _getCoordinate(newCell));
+            msg.sender.transfer({value: 0, flag: MsgFlag.ALL_NOT_RESERVED, bounce: false});
+            return;
+            //return {value: 0, flag: MsgFlag.ALL_NOT_RESERVED, bounce: false} (diceVal, _getCoordinate(newCell));
         }
 
         move.playerSteps[player].push(Step(prevLocation, curLocation));
@@ -537,7 +538,9 @@ contract Game is IGame, Ownable, Cashback, Jackpot {
             }
         }
 
-        return {value: 0, flag: MsgFlag.ALL_NOT_RESERVED, bounce: false} (diceVal, Coordinate(x, y));
+        msg.sender.transfer({value: 0, flag: MsgFlag.ALL_NOT_RESERVED, bounce: false});
+
+        /*return {value: 0, flag: MsgFlag.ALL_NOT_RESERVED, bounce: false} (diceVal, Coordinate(x, y));*/
     }
 
     /**
