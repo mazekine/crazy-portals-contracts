@@ -1,5 +1,5 @@
 import chai, {expect} from "chai";
-import {Address, lockliftChai} from "locklift";
+import {Address, Contract, lockliftChai} from "locklift";
 import {GameAbi} from "../build/factorySource";
 import fs from 'fs';
 
@@ -36,11 +36,17 @@ interface Config {
 }
 
 async function main() {
-    await locklift.deployments.fixture({include: ["deployer", "testGame"]});
+    await locklift.deployments.fixture({include: ["deployer"]});
+
 
     let deployer = await locklift.deployments.getAccount("Deployer");
     let deployerAddress = deployer.account.address;
+/*
     let game = locklift.deployments.getContract<GameAbi>("TestGame");
+*/
+
+    const giverAddress = new Address(locklift.context.network.config.giver.address);
+    const signer = (await locklift.keystore.getSigner("0"))!;
 
     let configPath: string = "./cp.deploy.config.localNode.json";
 
@@ -53,6 +59,8 @@ async function main() {
     let config = readConfigFile(configPath)!!;
     let boardConfig = config.board;
     let roundConfig = config.round;
+
+    expect(boardConfig.owner).not.equal(undefined, "Owner not set");
 
     let defaultConfig: Config = {
         board: {
@@ -83,6 +91,24 @@ async function main() {
             createFirstRound: false
         }
     }
+
+    const { contract,  } = await locklift.deployments.deploy({
+        deploymentName: "TestGame",
+        deployConfig: {
+            contract: "Game",
+            publicKey: signer.publicKey,
+            initParams: {
+                nonce: locklift.utils.getRandomNonce(),
+            },
+            constructorParams: {
+                owner: deployerAddress,
+                size: 10
+            },
+            value: locklift.utils.toNano(0.2),
+        }
+    });
+
+    let game = contract;
 
     console.log(`Game deployed at: ${game.address.toString()}`);
     console.log("Configuring...")
@@ -440,9 +466,7 @@ async function main() {
     if(roundConfig.createFirstRound !== undefined) {
         const createRoundTx = await locklift.tracing.trace(game
             .methods
-            .createRound({
-                answerId: 0
-            })
+            .createRound({})
             .send({
                 from: deployerAddress,
                 amount: locklift.utils.toNano(0.2),

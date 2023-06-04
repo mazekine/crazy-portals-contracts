@@ -234,8 +234,6 @@ contract Game is IGame, Ownable, Cashback, Jackpot {
 
     /**
         Creates new round
-
-        @return round   Round metadata
     */
     function createRound()
     external
@@ -473,6 +471,7 @@ contract Game is IGame, Ownable, Cashback, Jackpot {
 
         //  Check if player stepped on a portal entrance
         //  Consider only one portal teleportation is possible
+        //  Suppose no portal can end on the last cell
         if(cells[curLocation.cell].hasValue()) {
             Path path = cells[curLocation.cell].get();
             if(path.from.x == curLocation.coordinate.x && path.from.y == curLocation.coordinate.y) {
@@ -480,6 +479,9 @@ contract Game is IGame, Ownable, Cashback, Jackpot {
                 curLocation = Location(_getCell(path.to.x, path.to.y), Coordinate(path.to.x, path.to.y));
                 move.playerSteps[player].push(Step(prevLocation, curLocation));
                 emit PlayerMoved(address(this), roundId, player, prevLocation, curLocation);
+
+                x = path.to.x;
+                y = path.to.y;
             }
         }
 

@@ -97,10 +97,8 @@
 		{
 			"name": "createRound",
 			"inputs": [
-				{"name":"answerId","type":"uint32"}
 			],
 			"outputs": [
-				{"components":[{"name":"id","type":"uint64"},{"name":"status","type":"uint8"},{"name":"winner","type":"address"},{"name":"maxPlayers","type":"uint16"},{"name":"giveUpAllowed","type":"bool"},{"name":"validUntil","type":"uint64"},{"name":"roundDuration","type":"uint64"},{"name":"moveDuration","type":"uint64"},{"name":"autoStartTimestamp","type":"optional(uint64)"},{"name":"entryStake","type":"uint128"},{"name":"prizeFund","type":"uint128"},{"name":"prizeClaimed","type":"bool"},{"name":"rake","type":"uint128"},{"name":"rakeToJackpotRate","type":"uint8"}],"name":"round","type":"tuple"}
 			]
 		},
 		{

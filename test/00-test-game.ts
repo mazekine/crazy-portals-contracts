@@ -37,7 +37,7 @@ const JACKPOT_RATE = 50;
 
 describe("Test Game", async function () {
     before(async () => {
-        await locklift.deployments.fixture({include: ["deployer", "testGame"]});
+        await locklift.deployments.fixture({include: ["deployer", "testGame", "opponent"]});
         deployer = await locklift.deployments.getAccount("Deployer").account.address;
         opponent = await locklift.deployments.getAccount("Opponent").account.address;
         game = locklift.deployments.getContract<GameAbi>("TestGame");
@@ -367,9 +367,7 @@ describe("Test Game", async function () {
 
             const createRoundTx = await locklift.tracing.trace(game
                 .methods
-                .createRound({
-                    answerId: 0
-                })
+                .createRound()
                 .send({
                     from: deployer,
                     amount: locklift.utils.toNano(0.2),
