@@ -258,7 +258,7 @@ contract Game is IGame, Ownable, Cashback, Jackpot {
             maxPlayers,
             giveUpAllowed,
 
-            roundId + maxRoundDurationSec,
+            0, //roundId + maxRoundDurationSec,
             maxRoundDurationSec,
             maxMoveDurationSec,
             autostart,
@@ -277,6 +277,48 @@ contract Game is IGame, Ownable, Cashback, Jackpot {
 
         msg.sender.transfer({value: 0, flag: MsgFlag.REMAINING_GAS, bounce: false});
         //return {value: 0, flag: MsgFlag.REMAINING_GAS, bounce: false} newRound;
+    }
+
+    function updateRoundStatus(uint64 roundId) external override cashback {
+        tvm.rawReserve(address(this).balance - msg.value + TX_STORAGE_FEE, 0);
+        _updateRoundStatus(roundId);
+    }
+
+    function _updateRoundStatus(uint64 roundId) internal {
+        if(!rounds.exists(roundId)) return;
+
+        Round round = rounds[roundId];
+        uint64 timestamp = Utils._getTimestamp();
+
+        //  Check if round has expired
+        if(round.validUntil > 0 && round.validUntil <= timestamp) {
+            rounds[roundId].status = RoundStatus.Expired;
+            tvm.commit();
+            return;
+        }
+
+        //  Check if round is in final status
+        if(round.status == RoundStatus.Finished || round.status == RoundStatus.Expired) return;
+
+        //  Check if all players have joined
+        if(round.status == RoundStatus.NotStarted) {
+            if(roundPlayers[roundId].length != round.maxPlayers) return;
+
+            rounds[roundId].status = RoundStatus.Ready;
+        }
+
+        //  Check if
+        if(round.status == RoundStatus.Ready) {
+            if(roundPlayers[roundId].length != round.maxPlayers) return;
+
+            rounds[roundId].validUntil = round.roundDuration + Utils._getTimestamp();
+            rounds[roundId].status = RoundStatus.Active;
+            tvm.commit();
+        }
+
+        if(round.status == RoundStatus.Active) {
+
+        }
     }
 
     /**
@@ -371,7 +413,7 @@ contract Game is IGame, Ownable, Cashback, Jackpot {
         uint64 timestamp = Utils._getTimestamp();
 
         //  Check that the round is not expired on this roll
-        if(round.validUntil <= timestamp) {
+        if(round.validUntil > 0 && round.validUntil <= timestamp) {
             rounds[roundId].status = RoundStatus.Expired;
             tvm.commit();
             revert(BaseErrorCodes.TOO_LATE);
@@ -386,6 +428,7 @@ contract Game is IGame, Ownable, Cashback, Jackpot {
             //  Check that all players have joined
             require(roundPlayers[roundId].length == round.maxPlayers, BaseErrorCodes.NOT_ALL_PLAYERS_JOINED);
 
+            rounds[roundId].validUntil = round.roundDuration + Utils._getTimestamp();
             rounds[roundId].status = RoundStatus.Active;
             tvm.commit();
         }

@@ -119,6 +119,7 @@ interface IGame {
     function getRounds(optional(RoundStatus) status) external view responsible returns (Round[] rounds);
     function getRoundLatestMove(uint64 roundId) external view responsible returns (optional(Move) move);
     function joinRound(uint64 roundId) external /*responsible returns (bool result)*/;
+    function updateRoundStatus(uint64 roundId) external;
 
     function setMaxPlayers(uint16 qty) external;
     function setMaxRoundTimeSec(uint64 sec) external;
