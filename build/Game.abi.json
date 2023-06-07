@@ -102,6 +102,14 @@
 			]
 		},
 		{
+			"name": "updateRoundStatus",
+			"inputs": [
+				{"name":"roundId","type":"uint64"}
+			],
+			"outputs": [
+			]
+		},
+		{
 			"name": "joinRound",
 			"inputs": [
 				{"name":"roundId","type":"uint64"}

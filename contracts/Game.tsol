@@ -489,11 +489,23 @@ contract Game is IGame, Ownable, Cashback, Jackpot {
 
         prevLocation = Location(curCell, _getCoordinate(curCell));
         curLocation  = Location(newCell, _getCoordinate(newCell));
-        emit PlayerMoved(address(this), roundId, player, prevLocation, curLocation);
 
         if(boardOverflow < 0) {             //  The player has come out of the board
+            Location lastCellLocation = Location(board.columns * board.rows, Coordinate(board.columns, board.rows));
+
+            emit PlayerMoved(
+                address(this),
+                roundId,
+                player,
+                prevLocation,
+                lastCellLocation
+            );
+
+            move.playerSteps[player].push(Step(prevLocation, lastCellLocation));
+
             newCell = uint16(int16(board.columns * board.rows) + boardOverflow);
             curLocation  = Location(newCell, _getCoordinate(newCell));
+            prevLocation = lastCellLocation;
         } else if (boardOverflow == 0) {    //  The player has got to the final cell
             //  Player has won
             rounds[roundId].status = RoundStatus.Finished;
@@ -505,8 +517,11 @@ contract Game is IGame, Ownable, Cashback, Jackpot {
             msg.sender.transfer({value: 0, flag: MsgFlag.ALL_NOT_RESERVED, bounce: false});
             return;
             //return {value: 0, flag: MsgFlag.ALL_NOT_RESERVED, bounce: false} (diceVal, _getCoordinate(newCell));
+        } else {
+
         }
 
+        emit PlayerMoved(address(this), roundId, player, prevLocation, curLocation);
         move.playerSteps[player].push(Step(prevLocation, curLocation));
 
         x = curLocation.coordinate.x;
