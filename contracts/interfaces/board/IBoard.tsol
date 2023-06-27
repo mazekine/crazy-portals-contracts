@@ -1,0 +1,14 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+pragma ever-solidity >= 0.62.0;
+
+import "../common/IGenericStructures.tsol";
+
+interface IBoard is IGenericStructures {
+    //  Board configuration events
+    event BoardGenerated(Board board, Path[] redBeams, Path[] blueBeams);
+
+    function generateBoard(uint seed, uint16 maxRedBeams, uint16 maxBlueBeams) external;
+    function getBoard() external view responsible returns (Board board, Path[] redBeams, Path[] blueBeams);
+
+
+}

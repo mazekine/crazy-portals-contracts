@@ -26,4 +26,5 @@ library Gas {
     uint128 constant CHECK_TOKEN_WALLET_BALANCE         = 0.2 ever;
     uint128 constant CONTRACT_MIN_BALANCE               = 0.2 ever;
     uint128 constant PAYMENT_VALUE                      = 0.1 ever;
+    uint128 constant TX_STORAGE_FEE                     = 0.05 ever;
 }

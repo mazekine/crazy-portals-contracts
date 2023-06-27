@@ -152,7 +152,7 @@ PUSHCONT {
 	.loc ../contracts/Game.tsol, 98
 	PUSHINT 0
 	CALLREF {
-		CALL $_getPath_1d89c499_internal_macro$
+		CALL $_getPath_13278721_internal_macro$
 	}
 	.loc ../contracts/Game.tsol, 99
 	DUP
@@ -290,7 +290,7 @@ PUSHCONT {
 	.loc ../contracts/Game.tsol, 107
 	PUSHINT 1
 	CALLREF {
-		CALL $_getPath_1d89c499_internal_macro$
+		CALL $_getPath_13278721_internal_macro$
 	}
 	.loc ../contracts/Game.tsol, 108
 	DUP
@@ -5069,7 +5069,7 @@ IFELSE
 ENDS
 .loc ../contracts/Game.tsol, 0
 CALLREF {
-	CALL $getRounds_f8c68c7b_internal_macro$
+	CALL $getRounds_47ebfac6_internal_macro$
 }
 OVER
 PUSHCONT {
@@ -5130,7 +5130,7 @@ IFREF {
 }
 THROW 0
 
-.macro getRounds_f8c68c7b_internal_macro
+.macro getRounds_47ebfac6_internal_macro
 .loc ../contracts/Game.tsol, 677
 DUP
 ISNULL
@@ -5826,11 +5826,11 @@ SWAP
 PAIR
 .loc ../contracts/Game.tsol, 0
 
-.globl	_getPath_1d89c499_internal
-.type	_getPath_1d89c499_internal, @function
-CALL $_getPath_1d89c499_internal_macro$
+.globl	_getPath_13278721_internal
+.type	_getPath_13278721_internal, @function
+CALL $_getPath_13278721_internal_macro$
 
-.macro _getPath_1d89c499_internal_macro
+.macro _getPath_13278721_internal_macro
 .loc ../contracts/Game.tsol, 734
 PUSHINT 0
 DUP

@@ -569,6 +569,39 @@
 			]
 		},
 		{
+			"name": "PrizeClaimed",
+			"inputs": [
+				{"name":"board","type":"address"},
+				{"name":"roundId","type":"uint64"},
+				{"name":"player","type":"address"},
+				{"name":"amount","type":"uint128"}
+			],
+			"outputs": [
+			]
+		},
+		{
+			"name": "JackpotDrawn",
+			"inputs": [
+				{"name":"board","type":"address"},
+				{"name":"roundId","type":"uint64"},
+				{"name":"player","type":"address"},
+				{"name":"amount","type":"uint128"}
+			],
+			"outputs": [
+			]
+		},
+		{
+			"name": "JackpotClaimed",
+			"inputs": [
+				{"name":"board","type":"address"},
+				{"name":"roundId","type":"uint64"},
+				{"name":"player","type":"address"},
+				{"name":"amount","type":"uint128"}
+			],
+			"outputs": [
+			]
+		},
+		{
 			"name": "BoardGenerated",
 			"inputs": [
 				{"components":[{"name":"columns","type":"uint16"},{"name":"rows","type":"uint16"}],"name":"board","type":"tuple"},
@@ -664,39 +697,6 @@
 				{"name":"board","type":"address"},
 				{"name":"oldValue","type":"bool"},
 				{"name":"newValue","type":"bool"}
-			],
-			"outputs": [
-			]
-		},
-		{
-			"name": "PrizeClaimed",
-			"inputs": [
-				{"name":"board","type":"address"},
-				{"name":"roundId","type":"uint64"},
-				{"name":"player","type":"address"},
-				{"name":"amount","type":"uint128"}
-			],
-			"outputs": [
-			]
-		},
-		{
-			"name": "JackpotDrawn",
-			"inputs": [
-				{"name":"board","type":"address"},
-				{"name":"roundId","type":"uint64"},
-				{"name":"player","type":"address"},
-				{"name":"amount","type":"uint128"}
-			],
-			"outputs": [
-			]
-		},
-		{
-			"name": "JackpotClaimed",
-			"inputs": [
-				{"name":"board","type":"address"},
-				{"name":"roundId","type":"uint64"},
-				{"name":"player","type":"address"},
-				{"name":"amount","type":"uint128"}
 			],
 			"outputs": [
 			]

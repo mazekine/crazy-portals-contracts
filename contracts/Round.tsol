@@ -1,0 +1,353 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+pragma ever-solidity >= 0.62.0;
+
+import "./interfaces/round/IRound.tsol";
+import "./libraries/Utils.tsol";
+import "./libraries/Gas.tsol";
+import "./libraries/Navigation.tsol";
+import "@broxus/contracts/contracts/libraries/MsgFlag.tsol";
+
+contract Round is IRound {
+    uint128 private constant MIN_PLAYERS = 2;                                //  Minimum number of players to attend the game
+
+    //  The list of rounds
+    mapping(uint64 => Round) rounds;
+
+    //  Rounds metadata
+    mapping(address => uint64)        playerRound;   // Active round for player
+    mapping(uint64 => address[])      roundPlayers;  // List of players in a round
+    mapping(uint64 => Move)           roundMoves;    // Latest round move steps
+    mapping(address => uint16)        playerCell;    // Location of player of current map
+    mapping(uint16 => optional(Path)) cells;         // Contains location of portals on map
+
+
+    //  Treasury
+    BoardTreasury boardTreasury; // Board locked balance
+
+    constructor() public {
+    }
+
+    function getRoundLatestMove(uint64 roundId) external view responsible override returns (optional(Move) move) {
+        return {value: 0, flag: MsgFlag.REMAINING_GAS, bounce: false} (roundMoves.fetch(roundId));
+    }
+
+    function getRound(uint64 roundId) external view responsible override returns (optional(Round) round) {
+        return {value: 0, flag: MsgFlag.REMAINING_GAS, bounce: false} rounds.fetch(roundId);
+    }
+
+    /**
+        Joins the requesting player to the specified round
+
+        @param      roundId Round identifier
+    */
+    function joinRound(uint64 roundId)
+    external
+        //responsible
+    override
+        /*returns (bool result)*/ {
+        tvm.rawReserve(address(this).balance - msg.value + Gas.TX_STORAGE_FEE, 0); //  Reserve all except message value less storage fee
+
+        require(rounds.exists(roundId), BaseErrorCodes.ITEM_NOT_FOUND);
+        require(roundPlayers[roundId].length < rounds[roundId].maxPlayers, BaseErrorCodes.NOT_ALLOWED);
+
+        address player = msg.sender;
+        for(address _player : roundPlayers[roundId]) {
+            require(_player != player, BaseErrorCodes.NOTHING_CHANGED);
+        }
+
+        if(playerRound.exists(player)) {
+            //  Check that player is not joining the same round
+            require(playerRound[player] != roundId, BaseErrorCodes.NOTHING_CHANGED);
+
+            //  Check that that player is not participating in an active round already
+            uint64 oldRound = playerRound[player];
+            require(rounds[oldRound].status == RoundStatus.Finished || rounds[oldRound].status == RoundStatus.Expired, BaseErrorCodes.WRONG_STATE);
+        }
+
+        Round round = rounds[roundId];
+        if(round.entryStake > 0) {
+            //  Increase the counter for entry stakes
+            boardTreasury.roundTreasury[roundId].entranceFee += round.entryStake;
+            //  Reserve the amount to check if the value of message is sufficient
+            tvm.rawReserve(round.entryStake, 0);
+        }
+
+        playerRound[player] = roundId;
+        roundPlayers[roundId].push(player);
+        playerCell[player] = 0;
+
+        _tryStartRound(roundId);
+
+        emit RoundJoined(address(this), roundId, player);
+
+        msg.sender.transfer({value: 0, bounce: false, flag: MsgFlag.ALL_NOT_RESERVED});
+
+        //return {value: 0, bounce: false, flag: MsgFlag.REMAINING_GAS} (true);
+    }
+
+    /**
+        Rolls a dice and makes a move on generated board
+    */
+    function roll()
+    external
+        //responsible
+    override
+        /*returns (uint16 dice, Coordinate newPosition)*/ {
+        require(boardInitialized, BaseErrorCodes.TOO_EARLY);
+
+        //  TODO: Autostart
+        //uint128 totalBalance = address(this).balance;
+        tvm.rawReserve(address(this).balance - msg.value + Gas.TX_STORAGE_FEE, 0);  //  Reserve everything except the message value less storage fee and rake value
+        //tvm.rawReserve(msg.value - TX_STORAGE_FEE, 1);
+
+        address player = msg.sender;
+
+        //  Check if the round is linked to the player
+        //  TODO: reset rounds after finish
+        require(playerRound.exists(player), BaseErrorCodes.PLAYER_NOT_FOUND_IN_ROUND);
+
+        //  Check if player was put on the board
+        require(playerCell.exists(player), BaseErrorCodes.PLAYER_NOT_FOUND_ON_BOARD);
+
+        uint64 roundId = playerRound[player];
+
+        //  Check if such round exists
+        if(!rounds.exists(roundId)) {
+            delete playerRound[player];
+            delete playerCell[player];
+            revert(BaseErrorCodes.ITEM_NOT_FOUND);
+        }
+
+        Round round = rounds[roundId];
+
+        //  Check that the round is not finished or expired before
+        require(round.status != RoundStatus.Finished, BaseErrorCodes.FINISHED);
+        require(round.status != RoundStatus.Expired, BaseErrorCodes.TOO_LATE);
+
+        uint64 timestamp = Utils._getTimestamp();
+
+        //  Check that the round is not expired on this roll
+        if(round.validUntil > 0 && round.validUntil <= timestamp) {
+            rounds[roundId].status = RoundStatus.Expired;
+            tvm.commit();
+            revert(BaseErrorCodes.TOO_LATE);
+        }
+
+        //  Activate round if it's the first step in it
+        if(round.status == RoundStatus.Ready) {
+            //  TODO: Check that prize if available
+            //  TODO: freeze the prize per rounds
+            //require(totalBalance > (Gas.CONTRACT_MIN_BALANCE + round.prizeFund), BaseErrorCodes.NOT_ENOUGH_BALANCE);
+
+            //  Check that all players have joined
+            require(roundPlayers[roundId].length == round.maxPlayers, BaseErrorCodes.NOT_ALL_PLAYERS_JOINED);
+
+            rounds[roundId].validUntil = round.roundDuration + Utils._getTimestamp();
+            rounds[roundId].status = RoundStatus.Active;
+            tvm.commit();
+        }
+
+        //  Take rake and jackpot
+        if(round.rake > 0) {
+            tvm.rawReserve(round.rake, 0);
+
+            uint128 jackpotAccrual = math.muldiv(round.rake, round.rakeToJackpotRate, 100);
+            uint128 rakeRemainder = round.rake - jackpotAccrual;
+            boardTreasury.rakes += rakeRemainder;
+            boardTreasury.jackpot += jackpotAccrual;
+        }
+
+        mapping(address => Step[]) playersMoved;
+        Step[]  steps;
+        Move    move;
+
+        if(roundMoves.exists(roundId)) {
+            //  If any player has moved already in this round
+            move = roundMoves[roundId];
+
+            if(
+                (move.expiresAt < timestamp) ||                         //  If move has expired
+                (move.playerSteps.keys().length == round.maxPlayers)    //  or all players have moved
+            ) {
+                move = Move(timestamp + round.moveDuration, playersMoved);
+            }
+        } else {
+            move = Move(timestamp + round.moveDuration, playersMoved);
+        }
+
+        //  Check that player hasn't moved yet
+        require(!move.playerSteps.exists(player), BaseErrorCodes.ALREADY_MOVED);
+        /*
+                for(address _player : move.playerSteps.keys()) {
+                    require(!(_player == player), BaseErrorCodes.ALREADY_MOVED);
+                }
+        */
+
+        move.playerSteps[player] = steps;
+
+        //  Roll the dice
+        rnd.shuffle(getRandomizer(roundId));
+        uint16 diceVal = rnd.next(6) + 1;
+
+        emit DiceRolled(player, diceVal);
+
+        //  Calculate new coordinates
+        Location    curLocation;
+        Location    prevLocation;
+        uint16      curCell = playerCell[player];   //  Current cell the player stands on
+        uint16      newCell = curCell + diceVal;    //  The first cell the player moves to
+        //  If the player is at the end of the board and got more points than needed, return him back by amount of an overflow
+        int16       boardOverflow = int16(board.columns) * int16(board.rows) - int16(newCell);
+        uint16      x;
+        uint16      y;
+
+        prevLocation = Location(curCell, _getCoordinate(curCell));
+        curLocation  = Location(newCell, _getCoordinate(newCell));
+
+        if(boardOverflow < 0) {             //  The player has come out of the board
+            Location lastCellLocation = Location(board.columns * board.rows, Coordinate(board.columns, board.rows));
+
+            emit PlayerMoved(
+                address(this),
+                roundId,
+                player,
+                prevLocation,
+                lastCellLocation
+            );
+
+            move.playerSteps[player].push(Step(prevLocation, lastCellLocation));
+
+            newCell = uint16(int16(board.columns * board.rows) + boardOverflow);
+            curLocation  = Location(newCell, _getCoordinate(newCell));
+            prevLocation = lastCellLocation;
+        } else if (boardOverflow == 0) {    //  The player has got to the final cell
+            //  Player has won
+            rounds[roundId].status = RoundStatus.Finished;
+            rounds[roundId].winner = player;
+            move.playerSteps[player].push(Step(prevLocation, curLocation));
+            roundMoves[roundId] = move;
+
+            emit RoundFinished(address(this), roundId, player);
+            msg.sender.transfer({value: 0, flag: MsgFlag.ALL_NOT_RESERVED, bounce: false});
+            return;
+            //return {value: 0, flag: MsgFlag.ALL_NOT_RESERVED, bounce: false} (diceVal, _getCoordinate(newCell));
+        } else {
+
+        }
+
+        emit PlayerMoved(address(this), roundId, player, prevLocation, curLocation);
+        move.playerSteps[player].push(Step(prevLocation, curLocation));
+
+        x = curLocation.coordinate.x;
+        y = curLocation.coordinate.y;
+
+        //  Check if player stepped on a portal entrance
+        //  Consider only one portal teleportation is possible
+        //  Suppose no portal can end on the last cell
+        if(cells[curLocation.cell].hasValue()) {
+            Path path = cells[curLocation.cell].get();
+            if(path.from.x == curLocation.coordinate.x && path.from.y == curLocation.coordinate.y) {
+                prevLocation = curLocation;
+                curLocation = Location(_getCell(path.to.x, path.to.y), Coordinate(path.to.x, path.to.y));
+                move.playerSteps[player].push(Step(prevLocation, curLocation));
+                emit PlayerMoved(address(this), roundId, player, prevLocation, curLocation);
+
+                x = path.to.x;
+                y = path.to.y;
+            }
+        }
+
+        /*
+                bool flag;
+                while(!flag) {
+                    (uint16 _x, uint16 _y) = _checkContinuation(player, x, y);
+                    if(_x == x && _y == y) {
+                        flag = true;
+                    } else {
+                        x = _x;
+                        y = _y;
+
+                        prevLocation = curLocation;
+                        curLocation = Location(_getCell(x, y), Coordinate(x, y));
+                        move.playerSteps[player].push(Step(prevLocation, curLocation));
+                        emit PlayerMoved(address(this), roundId, player, prevLocation, curLocation);
+                    }
+                }
+        */
+
+        newCell = _getCell(x, y);
+        playerCell[player] = newCell;
+        roundMoves[roundId] = move;
+
+        if(round.rake > 0 && round.rakeToJackpotRate > 0) {
+            //  Register step interval for adaptive jackpot
+            registerStepInterval(Utils._getTimestamp());
+
+            //  Draw jackpot
+            if(drawJackpot(roundId)) {
+                uint128 jackpot = boardTreasury.jackpot;
+                if(jackpot > 0) {
+                    //  Reset the accumulated jackpot
+                    boardTreasury.jackpot = 0;
+
+                    //  Add round treasury if it doesn't exist yet
+                    if(!boardTreasury.roundTreasury.exists(roundId)){
+                        boardTreasury.roundTreasury[roundId] = RoundTreasury({
+                            entranceFee: 0,
+                            prize: 0,
+                            playerJackpot: emptyMap
+                        });
+                    }
+
+                    //  Add player jackpot accrual if it doesn't exist yet
+                    if(!boardTreasury.roundTreasury[roundId].playerJackpot.exists(player)) {
+                        boardTreasury.roundTreasury[roundId].playerJackpot[player] = 0;
+                    }
+
+                    //  Increase player's jackpot
+                    boardTreasury.roundTreasury[roundId].playerJackpot[player] += jackpot;
+
+                    emit JackpotDrawn(address(this), roundId, player, jackpot);
+                }
+            }
+        }
+
+        msg.sender.transfer({value: 0, flag: MsgFlag.ALL_NOT_RESERVED, bounce: false});
+
+        /*return {value: 0, flag: MsgFlag.ALL_NOT_RESERVED, bounce: false} (diceVal, Coordinate(x, y));*/
+    }
+
+
+    /**
+        Checks if all necessary conditions for round start are satisfied and starts the round
+
+        @param  roundId     Round identifier
+    */
+    function _tryStartRound(uint64 roundId) internal {
+        require(rounds.exists(roundId), BaseErrorCodes.ITEM_NOT_FOUND);
+
+        Round round = rounds[roundId];
+
+        //  Not applicable if the round is already going
+        if(round.status > RoundStatus.NotStarted) return;
+
+        //  Check that the round has at least one player
+        if(!roundPlayers.exists(roundId)) return;
+
+        //  Minimum number of players must attend the game to start
+        if(roundPlayers[roundId].length < MIN_PLAYERS) return;
+
+        if(roundPlayers[roundId].length < round.maxPlayers) {
+            if(round.autoStartTimestamp.hasValue()) {
+                if(round.autoStartTimestamp.get() > Utils._getTimestamp()) {
+                    return;
+                } else {
+                    rounds[roundId].status = RoundStatus.Ready;
+                }
+            }
+        } else {
+            rounds[roundId].status = RoundStatus.Ready;
+        }
+    }
+
+}

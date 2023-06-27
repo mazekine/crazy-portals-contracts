@@ -1,0 +1,17 @@
+// SPDX-License-Identifier: UNLICENSED
+pragma ever-solidity >= 0.66.0;
+
+import "../../interfaces/common/IGenericStructures.tsol";
+
+abstract contract BoardConfiguration is IGenericStructures {
+    //  Board settings
+    uint    public seed;                                                // Map seed used to generate the map
+    uint16  public blueBeamsNumber;                                     // Number of blue portals to generate on board
+    uint16  public redBeamsNumber;                                      // Number of red portals to generate on board
+
+    //  Configuration storage
+    bool    public boardInitialized;                                    // Indicates if the board was generated already
+    Board   public           board;     //  Board size
+    Path[]                   redBeams;  //  Red portals
+    Path[]                   blueBeams; //  Blue portals
+}

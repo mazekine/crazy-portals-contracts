@@ -1,0 +1,87 @@
+// SPDX-License-Identifier: UNLICENSED
+pragma ever-solidity >= 0.62.0;
+
+interface IGenericStructures {
+    enum RoundStatus {
+        NotStarted, Ready, Active, Finished, Expired
+    }
+
+    /**
+        Round information container
+    */
+    struct Round {
+        //  Basic information
+        uint64              id;
+        RoundStatus         status;
+        address             winner;
+
+        //  General settings
+        uint16              maxPlayers;
+        bool                giveUpAllowed;
+
+        //  Timings
+        uint64              validUntil;
+        uint64              roundDuration;
+        uint64              moveDuration;
+        optional(uint64)    autoStartTimestamp;
+
+        //  Treasury
+        uint128             entryStake;
+        uint128             prizeFund;
+        bool                prizeClaimed;
+        uint128             rake;
+        uint8               rakeToJackpotRate;
+    }
+
+    struct Coordinate {
+        uint16 x;
+        uint16 y;
+    }
+
+    enum PathType {
+        RedBeam, BlueBeam
+    }
+
+    struct Path {
+        Coordinate from;
+        Coordinate to;
+        PathType   type_;
+    }
+
+    struct Board {
+        uint16 columns;
+        uint16 rows;
+    }
+
+    struct Move {
+        uint64    expiresAt;
+        mapping(address => Step[]) playerSteps;
+    }
+
+    struct Location {
+        uint16      cell;
+        Coordinate coordinate;
+    }
+
+    struct Step {
+        Location from;
+        Location to;
+    }
+
+    struct RoundTreasury {
+        uint128 prize;
+        uint128 entranceFee;
+        mapping(address => uint128) playerJackpot;
+    }
+
+    struct BoardTreasury {
+        uint128 rakes;
+        uint128 jackpot;
+        mapping(uint64 => RoundTreasury) roundTreasury;
+    }
+
+    struct CallMetadata {
+        uint64  callId;
+        address returnGasTo;
+    }
+}

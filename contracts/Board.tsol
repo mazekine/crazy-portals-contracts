@@ -1,0 +1,375 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+pragma ever-solidity >= 0.66.0;
+
+import "./abstracts/Cashback.tsol";
+import "./abstracts/Jackpot.tsol";
+import "./abstracts/Ownable.tsol";
+import "./Round.tsol";
+import "./abstracts/board/RoundFactory.tsol";
+import "./interfaces/board/IBoard.tsol";
+import "./libraries/Gas.tsol";
+import "@broxus/contracts/contracts/libraries/MsgFlag.tsol";
+
+contract Board is IBoard, Ownable, Cashback, Round, Jackpot, RoundFactory {
+    uint64  public static nonce;
+
+    /**
+        @param  owner   Default owner of the board
+        @param  size    Size of the board (must be an even number in range [6; 16])
+    */
+    constructor(address owner, uint16 size) public {
+        require((size % 2 == 0) || (size >= 6) || (size <= 16), BaseErrorCodes.NOT_ALLOWED);
+
+        tvm.accept();
+        board = Board(size, size);
+
+        _initOwnable(owner);
+    }
+
+    /**
+        Generates a new game board. Can be done only once per contract.
+
+        @param  _seed           Random salt to initiate randomizer
+        @param  _maxRedBeams    Maximum number of red portals
+        @param  _maxBlueBeams   Maximum number of blue portals
+    */
+    function generateBoard(uint _seed, uint16 _maxRedBeams, uint16 _maxBlueBeams)
+        external
+        override
+        onlyOwner
+        reservable
+        cashback 
+    {
+        require(!boardInitialized, BaseErrorCodes.ITEM_EXISTS);
+        require(_maxRedBeams <= (board.rows - 2), BaseErrorCodes.VALUE_TOO_BIG);
+        require(_maxBlueBeams <= (board.rows - 2), BaseErrorCodes.VALUE_TOO_BIG);
+
+        redBeamsNumber = _maxRedBeams;
+        blueBeamsNumber = _maxBlueBeams;
+
+        seed = _seed;
+        rnd.setSeed(seed);
+        rnd.shuffle();
+
+        uint16 headCell;
+        uint16 tailCell;
+
+        for(uint16 i = 0; i < redBeamsNumber; i++) {
+            Path redBeam = _getPath(PathType.RedBeam);
+            headCell = _getCell(redBeam.from.x, redBeam.from.y);
+            tailCell = _getCell(redBeam.to.x, redBeam.to.y);
+            cells[headCell] = redBeam;
+            cells[tailCell] = redBeam;
+            redBeams.push(redBeam);
+        }
+
+        for(uint16 i = 0; i < blueBeamsNumber; i++) {
+            Path blueBeam = _getPath(PathType.BlueBeam);
+            tailCell = _getCell(blueBeam.from.x, blueBeam.from.y);
+            headCell = _getCell(blueBeam.to.x, blueBeam.to.y);
+            cells[headCell] = blueBeam;
+            cells[tailCell] = blueBeam;
+            blueBeams.push(blueBeam);
+        }
+
+        boardInitialized = true;
+
+        emit BoardGenerated(board, redBeams, blueBeams);
+    }
+
+    function updateRoundStatus(uint64 roundId) external override cashback {
+        tvm.rawReserve(address(this).balance - msg.value + Gas.TX_STORAGE_FEE, 0);
+        _updateRoundStatus(roundId);
+    }
+
+    function _updateRoundStatus(uint64 roundId) internal {
+        if(!rounds.exists(roundId)) return;
+
+        Round round = rounds[roundId];
+        uint64 timestamp = Utils._getTimestamp();
+
+        //  Check if round has expired
+        if(round.validUntil > 0 && round.validUntil <= timestamp) {
+            rounds[roundId].status = RoundStatus.Expired;
+            tvm.commit();
+            return;
+        }
+
+        //  Check if round is in final status
+        if(round.status == RoundStatus.Finished || round.status == RoundStatus.Expired) return;
+
+        //  Check if all players have joined
+        if(round.status == RoundStatus.NotStarted) {
+            if(roundPlayers[roundId].length != round.maxPlayers) return;
+
+            rounds[roundId].status = RoundStatus.Ready;
+        }
+
+        //  Check if
+        if(round.status == RoundStatus.Ready) {
+            if(roundPlayers[roundId].length != round.maxPlayers) return;
+
+            rounds[roundId].validUntil = round.roundDuration + Utils._getTimestamp();
+            rounds[roundId].status = RoundStatus.Active;
+            tvm.commit();
+        }
+
+        if(round.status == RoundStatus.Active) {
+
+        }
+    }
+
+
+    /**
+        Allows the winner to claim the prize.
+
+        @param  roundId     Round identifier
+    */
+    function claim(uint64 roundId) external override cashback {
+        //  Check if round exists
+        require(rounds.exists(roundId), BaseErrorCodes.ITEM_NOT_FOUND);
+        Round round = rounds[roundId];
+
+        require(boardTreasury.roundTreasury.exists(roundId), BaseErrorCodes.ITEM_NOT_FOUND);
+        RoundTreasury rt = boardTreasury.roundTreasury[roundId];
+
+        //  If prize fund is empty, no sense to trigger transaction and spend money
+        //require(round.prizeFund > 0, BaseErrorCodes.NOTHING_TO_PAY);
+        require(rt.prize > 0, BaseErrorCodes.NOTHING_TO_PAY);
+
+        uint128 totalPrize = rt.prize + rt.entranceFee;
+
+        //  Check that the balance is sufficient
+        require(address(this).balance > (totalPrize + Utils.CONTRACT_MIN_BALANCE + msg.value), BaseErrorCodes.NOT_ENOUGH_BALANCE);
+
+        //  Reserve the remaining amount to secure other rounds
+        tvm.rawReserve(totalPrize + msg.value - Gas.TX_STORAGE_FEE, 12);    //  Hotfix until tx fee information appears on mainnet
+        //tvm.rawReserve(round.prizeFund + msg.value - tx.storageFee, 12);    //  Reserve all but prize fund for this round and message value less storage fee
+
+        //  Check if the round has finished
+        require(round.status == RoundStatus.Finished,    BaseErrorCodes.WRONG_STATE);
+
+        //  Check that the caller is the winner
+        //  require(round.winner == msg.sender,              BaseErrorCodes.NOT_ALLOWED);
+
+        //  require(address(this).balance > round.prizeFund, BaseErrorCodes.NOT_ENOUGH_BALANCE);
+
+        //  Check that the prize hasn't been claimed already
+        require(!round.prizeClaimed, BaseErrorCodes.FINISHED);
+
+        //  Transfer the prize to the winner
+        round.winner.transfer({value: totalPrize, bounce: false, flag: MsgFlag.SENDER_PAYS_FEES});
+
+        //  Save the status
+        rounds[roundId].prizeClaimed = true;
+
+        emit PrizeClaimed(address(this), roundId, round.winner, round.prizeFund);
+    }
+
+    /**
+        Returns the generated board
+
+        @return _board      Board object
+        @return _redBeams   Array of red portal locations
+        @return _blueBeams  Array of blue portal locations
+    */
+    function getBoard()
+        external
+        view
+        responsible
+        override
+    returns (Board _board, Path[] _redBeams, Path[] _blueBeams) {
+        return {value: 0, flag: MsgFlag.ALL_NOT_RESERVED, bounce: false} (board, redBeams, blueBeams);
+    }
+
+    function getRounds(optional(RoundStatus) status) external view responsible override returns (Round[] _rounds) {
+        if(!status.hasValue()) return {value: 0, flag: MsgFlag.REMAINING_GAS, bounce: false} rounds.values();
+
+        Round[] result;
+        RoundStatus rs = status.get();
+        for(Round round : rounds.values()) {
+            if(round.status == rs) result.push(round);
+        }
+
+        return {value: 0, flag: MsgFlag.REMAINING_GAS, bounce: false} result;
+    }
+
+    function _checkContinuation(address player, uint16 x, uint16 y) internal view returns (uint16 _x, uint16 _y) {
+        _x = x;
+        _y = y;
+
+        for(Path redBeam : redBeams) {
+            if(redBeam.from.x == x && redBeam.from.y == y) {
+                _x = redBeam.to.x;
+                _y = redBeam.to.y;
+
+                emit PathFound(player, redBeam);
+            }
+        }
+
+        for(Path blueBeam : blueBeams) {
+            if(blueBeam.from.x == x && blueBeam.from.y == y) {
+                _x = blueBeam.to.x;
+                _y = blueBeam.to.y;
+
+                emit PathFound(player, blueBeam);
+            }
+        }
+
+        return (_x, _y);
+    }
+
+    function _getCell(uint16 x, uint16 y) private view returns (uint16 cell) {
+        bool rtl = (y % 2 == 0);
+        if (rtl) x = board.columns - x + 1;
+        return ((y - 1) * board.columns + x);
+    }
+
+    function _getCoordinate(uint16 cell) private view returns (Coordinate) {
+        if(cell == 0) return Coordinate(0, 0);
+
+        uint16 y = (cell - 1) / board.columns + 1;
+        uint16 x = cell - (y - 1) * board.columns;
+
+        bool rtl = (y % 2 == 0);
+        if (rtl) {
+            x = board.columns - x + 1;
+        }
+
+        return Coordinate(x, y);
+    }
+
+    function _getPath(PathType pathType) private view returns (Path path) {
+        Coordinate head;
+        Coordinate tail;
+
+        uint16 headCell;
+        uint16 tailCell;
+
+        bool flag;
+        while(!flag) {
+            head.x = rnd.next(board.columns) + 1;
+            head.y = rnd.next(board.rows - 1) + 2;              //  Head cannot happen on the first row
+            headCell = _getCell(head.x, head.y);
+
+            flag =  !(head.y == board.rows && head.x == 1) &&   //  Head cannot be on the final cell
+                    !cells[headCell].hasValue();                //  The cell cannot be occupied
+        }
+
+        flag = false;
+        while(!flag) {
+            tail.x = rnd.next(board.columns) + 1;
+            tail.y = rnd.next(head.y - 2) + 1;                  //  Tail must be lower than head
+            tailCell = _getCell(tail.x, tail.y);
+            flag = !cells[tailCell].hasValue();
+
+            if(pathType == PathType.BlueBeam) {
+                flag = flag && !(tailCell == 1);                //  BlueBeam cannot happen on the first cell
+            }
+        }
+
+        Path result;
+        if(pathType == PathType.RedBeam) {
+            result = Path(head, tail, pathType);
+        } else {
+            result = Path(tail, head, pathType);
+        }
+
+        return result;
+    }
+
+    function _checkBoardInitialized() private {
+        if((redBeams.length == redBeamsNumber) && (blueBeams.length == blueBeamsNumber)) {
+            boardInitialized = true;
+            emit BoardGenerated(board, redBeams, blueBeams);
+        }
+    }
+
+    /**
+        Gets a total of specific round reserves: entrance fees, prize and player jackpot accrual
+
+        @param  roundId         Round identifier
+        @return totalReserves   Sum of all reserves
+    */
+    function getRoundReserves(uint64 roundId) public view returns (uint128 totalReserves) {
+        require(rounds.exists(roundId), BaseErrorCodes.ITEM_NOT_FOUND);
+        require(boardTreasury.roundTreasury.exists(roundId), BaseErrorCodes.ITEM_NOT_FOUND);
+
+        RoundTreasury treasury = boardTreasury.roundTreasury[roundId];
+        totalReserves = treasury.entranceFee + treasury.prize;
+        for(( , uint128 pj) : treasury.playerJackpot) {
+            totalReserves += pj;
+        }
+
+        return totalReserves;
+    }
+
+    /**
+        Gets a total of all reserves per the board, including the jackpot fund, rakes and round reserves
+
+        @return totalReserves   Total reserves
+    */
+    function getBoardReserves() public view returns(uint128 totalReserves) {
+        totalReserves = boardTreasury.jackpot + boardTreasury.rakes;
+
+        for((uint64 rid, ) : boardTreasury.roundTreasury) {
+            uint128 roundReserves = getRoundReserves(rid);
+            totalReserves += roundReserves;
+        }
+
+        return totalReserves;
+    }
+
+    /**
+        Safely removes the player from a round and resets its environment
+
+        @param  roundId     Round identifier
+        @param  player      Player address
+    */
+    function _removePlayerFromRound(uint64 roundId, address player) internal {
+        require(rounds.exists(roundId), BaseErrorCodes.ITEM_NOT_FOUND);
+        require(roundPlayers.exists(roundId), BaseErrorCodes.ITEM_NOT_FOUND);
+
+        //  Detach round from player
+        if(playerRound.exists(player)) delete playerRound[player];
+
+        //  Detach position on the board from player
+        if(playerCell.exists(player)) delete playerCell[player];
+
+        //  Update the list of players
+        address[] newPlayerList;
+
+        for(address pl : roundPlayers[roundId]) {
+            if(pl != player) newPlayerList.push(pl);
+        }
+
+        roundPlayers[roundId] = newPlayerList;
+
+        //  In case the only one player is left in the round, they become winner automatically
+        if(newPlayerList.length == 1) {
+            rounds[roundId].winner = newPlayerList[0];
+            rounds[roundId].status = RoundStatus.Finished;
+        }
+
+        //  Fix the number of players in the storage
+        rounds[roundId].maxPlayers--;
+
+        //  Check for jackpot payout
+        optional(RoundTreasury) rto = boardTreasury.roundTreasury.fetch(roundId);
+        if(!rto.hasValue()) return;
+
+        RoundTreasury rt = rto.get();
+        if(!rt.playerJackpot.exists(player)) return;
+
+        //  Payout jackpot
+        uint128 jackpot = rt.playerJackpot[player];
+        if(jackpot > 0) {
+            player.transfer({value: jackpot, bounce: true});
+            emit JackpotClaimed(address(this), roundId, player, jackpot);
+        }
+
+        delete rt.playerJackpot[player];
+    }
+
+
+}

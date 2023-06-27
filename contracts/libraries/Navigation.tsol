@@ -1,0 +1,74 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+pragma ever-solidity >= 0.66.0;
+
+import "../interfaces/common/IGenericStructures.tsol";
+
+library Navigation {
+
+    function _getCell(uint8 x, uint8 y, uint8 size) internal returns (uint8 cell) {
+        bool rtl = (y % 2 == 0);
+        if (rtl) x = size - x + 1;
+        return ((y - 1) * size + x);
+    }
+
+    function _getCoordinate(uint8 cell, uint8 size) internal returns (IGenericStructures.Coordinate) {
+        if(cell == 0) return IGenericStructures.Coordinate(0, 0);
+
+        uint8 y = (cell - 1) / size + 1;
+        uint8 x = cell - (y - 1) * size;
+
+        bool rtl = (y % 2 == 0);
+        if (rtl) {
+            x = size - x + 1;
+        }
+
+        return IGenericStructures.Coordinate(x, y);
+    }
+
+    function _decodePortal(uint32 mask) internal returns (
+        uint8 fromCell,
+        uint8 fromX,
+        uint8 fromY,
+        uint8 toCell,
+        uint8 toX,
+        uint8 toY
+    ) {
+        uint8 filter8 = 0xFF;   //  ________________________11111111
+        uint8 filter4 = 0xF;    //  ____________________________1111
+
+        return (
+            uint8(mask >> 24),              //  XXXXXXXX________________________ --> ________________________XXXXXXXX
+            uint8((mask >> 20) & filter4),  //  ________XXXX____________________ --> ____________________________XXXX
+            uint8((mask >> 16) & filter4),  //  ____________XXXX________________ --> ____________________________XXXX
+            uint8((mask >> 8)  & filter8),  //  ________________XXXXXXXX________ --> ________________________XXXXXXXX
+            uint8((mask >> 4) & filter4),   //  ________________________XXXX____ --> ____________________________XXXX
+            uint8(mask & filter4)           //  ____________________________XXXX --> ____________________________XXXX
+        );
+    }
+
+    function _encodePortal(
+        uint8 fromCell,
+        uint8 fromX,
+        uint8 fromY,
+        uint8 toCell,
+        uint8 toX,
+        uint8 toY
+    ) internal returns (uint32 mask) {
+        uint32 encodedMask = 0;
+
+        encodedMask |= uint32(fromCell) << 24;
+        encodedMask |= uint32(fromX)    << 20;
+        encodedMask |= uint32(fromY)    << 16;
+        encodedMask |= uint32(toCell)   << 8;
+        encodedMask |= uint32(toX)      << 4;
+        encodedMask |= uint32(toY);
+
+        return encodedMask;
+    }
+
+    function _getPortalType(uint32 mask) internal returns (IGenericStructures.PathType) {
+        (uint8 fromCell,,, uint8 toCell,,) = _decodePortal(mask);
+        return (fromCell > toCell) ? IGenericStructures.PathType.RedBeam : IGenericStructures.PathType.BlueBeam;
+    }
+
+}

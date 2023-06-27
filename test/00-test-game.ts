@@ -1,7 +1,7 @@
 import {expect} from "chai";
 import chai from "chai";
 import {
-    Address, Contract, ContractMethod, DecodeOutputParams,
+    Address, Contract,
     lockliftChai
 } from "locklift";
 import {FactorySource, GameAbi} from "../build/factorySource";
@@ -35,14 +35,14 @@ const ROLL_GAS = locklift.utils.toNano(1);
 const RAKE = locklift.utils.toNano(0.02);
 const JACKPOT_RATE = 50;
 
-describe("Test Game", async function () {
+describe("Test Board.tsol", async function () {
     before(async () => {
         await locklift.deployments.fixture({include: ["deployer", "testGame", "opponent"]});
         deployer = await locklift.deployments.getAccount("Deployer").account.address;
         opponent = await locklift.deployments.getAccount("Opponent").account.address;
         game = locklift.deployments.getContract<GameAbi>("TestGame");
 
-        console.log("\nGame deployed at: " + game.address + "\n");
+        console.log("\nBoard.tsol deployed at: " + game.address + "\n");
     });
 
     describe("Contracts", async function () {
@@ -178,7 +178,7 @@ describe("Test Game", async function () {
             );
 
             console.log(nTabulator + "Board generated");
-            console.log(tabulator + "Game balance: " + locklift.utils.fromNano(await locklift.provider.getBalance(game.address)) + " EVER");
+            console.log(tabulator + "Board.tsol balance: " + locklift.utils.fromNano(await locklift.provider.getBalance(game.address)) + " EVER");
         });
 
         it("Set maximum players", async function () {
@@ -200,7 +200,7 @@ describe("Test Game", async function () {
             const maxPlayers = await game.methods.maxPlayers().call();
             expect(+maxPlayers.maxPlayers).to.be.equal(2, "Wrong players number");
             console.log(nTabulator + "Max players set to 2");
-            console.log(tabulator + "Game balance: " + locklift.utils.fromNano(await locklift.provider.getBalance(game.address)) + " EVER");
+            console.log(tabulator + "Board.tsol balance: " + locklift.utils.fromNano(await locklift.provider.getBalance(game.address)) + " EVER");
         });
 
         const PRIZE_FUND = 10;
@@ -227,7 +227,7 @@ describe("Test Game", async function () {
             expect(prizeFund.prizeFundPerRound).to.be.equal(locklift.utils.toNano(PRIZE_FUND), "Wrong prize fund");
 
             console.log(nTabulator + "Prize fund set to " + PRIZE_FUND + " EVER");
-            console.log(tabulator + "Game balance: " + locklift.utils.fromNano(await locklift.provider.getBalance(game.address)) + " EVER");
+            console.log(tabulator + "Board.tsol balance: " + locklift.utils.fromNano(await locklift.provider.getBalance(game.address)) + " EVER");
         });
 
         it("Set rake rate", async function () {
@@ -250,7 +250,7 @@ describe("Test Game", async function () {
             expect(rake.rake).to.be.equal(RAKE, "Wrong rake");
 
             console.log(nTabulator + "Rake set to " + locklift.utils.fromNano(rake.rake) + " EVER");
-            console.log(tabulator + "Game balance: " + locklift.utils.fromNano(await locklift.provider.getBalance(game.address)) + " EVER");
+            console.log(tabulator + "Board.tsol balance: " + locklift.utils.fromNano(await locklift.provider.getBalance(game.address)) + " EVER");
         });
 
         it("Set jackpot rate", async function () {
@@ -273,7 +273,7 @@ describe("Test Game", async function () {
             expect(jpRate.jackpotRate).to.be.equal(JACKPOT_RATE.toString(), "Wrong jackpot rate");
 
             console.log(nTabulator + "Jackpot rate set to " + jpRate.jackpotRate + "%");
-            console.log(tabulator + "Game balance: " + locklift.utils.fromNano(await locklift.provider.getBalance(game.address)) + " EVER");
+            console.log(tabulator + "Board.tsol balance: " + locklift.utils.fromNano(await locklift.provider.getBalance(game.address)) + " EVER");
         });
 
         it("Set jackpot averaged periods", async function () {
@@ -393,7 +393,7 @@ describe("Test Game", async function () {
             round = await game.methods.getRound({answerId: 0, roundId: roundId}).call();
 
             console.log(nTabulator + "Created round " + roundId);
-            console.log(tabulator + "Game balance: " + locklift.utils.fromNano(await locklift.provider.getBalance(game.address)) + " EVER");
+            console.log(tabulator + "Board.tsol balance: " + locklift.utils.fromNano(await locklift.provider.getBalance(game.address)) + " EVER");
         });
 
         it("Join round", async function () {
@@ -460,7 +460,7 @@ describe("Test Game", async function () {
                 .and.not.have.error();
 
             console.log(tabulator + "Opponent " + maskAddress(opponent.toString()) + " joined the round");
-            console.log(tabulator + "Game balance: " + locklift.utils.fromNano(await locklift.provider.getBalance(game.address)) + " EVER");
+            console.log(tabulator + "Board.tsol balance: " + locklift.utils.fromNano(await locklift.provider.getBalance(game.address)) + " EVER");
 
             round = await game.methods.getRound({answerId: 0, roundId: roundId}).call();
             expect(round.round!!.status).to.be.equal("1", "Round is in the wrong status");
@@ -490,7 +490,7 @@ describe("Test Game", async function () {
                     winner = round.round!!.winner;
                     const winnerName = winner == deployer ? "Deployer" : "Opponent";
                     console.log(nTabulator + "Round finished. " + winnerName + " has won");
-                    console.log(tabulator + "Game balance: " + locklift.utils.fromNano(await locklift.provider.getBalance(game.address)) + " EVER");
+                    console.log(tabulator + "Board.tsol balance: " + locklift.utils.fromNano(await locklift.provider.getBalance(game.address)) + " EVER");
                     break;
                 }
 
@@ -549,7 +549,7 @@ describe("Test Game", async function () {
                             .join('; ');
                         console.log(tabulator.repeat(2) + `${maskedAddress}: ${stepsSummary}`);
                     }
-                    console.log(tabulator.repeat(2) + "Game balance: " + locklift.utils.fromNano(await locklift.provider.getBalance(game.address)) + " EVER");
+                    console.log(tabulator.repeat(2) + "Board.tsol balance: " + locklift.utils.fromNano(await locklift.provider.getBalance(game.address)) + " EVER");
                 } else {
                     throw "Move is empty";
                 }
@@ -573,7 +573,7 @@ describe("Test Game", async function () {
             let winnerBalanceAfterClaim = +(await locklift.provider.getBalance(winner));
 
             console.log(nTabulator + "Received prize of " + locklift.utils.fromNano(round.round!.prizeFund) + " EVER");
-            console.log(tabulator + "Game balance: " + locklift.utils.fromNano(await locklift.provider.getBalance(game.address)) + " EVER\n");
+            console.log(tabulator + "Board.tsol balance: " + locklift.utils.fromNano(await locklift.provider.getBalance(game.address)) + " EVER\n");
 
             let winnerBalanceBeforeClaim = (winner == deployer) ? deployerBalance : opponentBalance;
             let winnerSpent = winnerBalanceAfterClaim - winnerBalanceBeforeClaim - +round.round!.prizeFund;

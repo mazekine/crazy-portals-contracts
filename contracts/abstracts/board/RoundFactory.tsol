@@ -1,0 +1,70 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+pragma ever-solidity >= 0.66.0;
+
+import "../../interfaces/board/IRoundFactory.tsol";
+import "../../libraries/BaseErrorCodes.tsol";
+import "../../libraries/Utils.tsol";
+import "../../interfaces/common/IGenericStructures.tsol";
+import "../round/RoundConfiguration.tsol";
+
+abstract contract RoundFactory is IRoundFactory, RoundConfiguration {
+    optional(uint64) public latestRoundNonce;
+    uint64[]         public rounds;
+
+    constructor() public {}
+
+    /**
+        Creates new round
+    */
+    function createRound() external override reservable cashback {
+        require(boardInitialized, BaseErrorCodes.TOO_EARLY);
+
+        uint64 roundId = Utils._getTimestamp();
+
+
+        optional(uint64) autostart = roundAutostartSec;
+        if(autostart.hasValue()) {
+            autostart = autostart.get() + roundId;
+        }
+
+
+        uint64 roundId = Utils._getTimestamp();
+        require(!rounds.exists(roundId), BaseErrorCodes.ITEM_EXISTS);
+
+        optional(uint64) autostart = roundAutostartSec;
+        if (autostart.hasValue()) {
+            autostart = autostart.get() + roundId;
+        }
+
+        Round newRound = Round(
+            roundId,
+            RoundStatus.NotStarted,
+            address(0),
+
+            maxPlayers,
+            giveUpAllowed,
+
+            0, //roundId + maxRoundDurationSec,
+            maxRoundDurationSec,
+            maxMoveDurationSec,
+            autostart,
+
+            entryStake,
+            prizeFundPerRound,
+            false,
+            rake,
+            jackpotRate
+        );
+
+        rounds[roundId] = newRound;
+        boardTreasury.roundTreasury[roundId] = RoundTreasury(prizeFundPerRound, 0, emptyMap);
+
+        emit RoundCreated(address(this), roundId);
+
+        msg.sender.transfer({value: 0, flag: MsgFlag.REMAINING_GAS, bounce: false});
+    }
+
+
+
+
+}

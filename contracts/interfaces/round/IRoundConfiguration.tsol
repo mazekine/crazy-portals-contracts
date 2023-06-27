@@ -1,0 +1,24 @@
+// SPDX-License-Identifier: UNLICENSED
+pragma ever-solidity >= 0.62.0;
+
+interface IRoundConfiguration {
+    function setMaxPlayers(uint16 qty) external;
+    function setMaxRoundTimeSec(uint64 sec) external;
+    function setMaxMoveTimeSec(uint64 sec) external;
+    function setPrizeFund(uint128 amount) external;
+    function setEntryStake(uint128 amount) external;
+    function setAutostartSec(optional(uint64) sec) external;
+    function setPlayerGiveUpAllowed(bool allowed) external;
+    function setRake(uint128 amount) external;
+    function setJackpotRate(uint8 rate) external;
+
+    event EntryStakeUpdated(address board, uint128 oldValue, uint128 newValue);
+    event RakeUpdated(address board, uint128 oldValue, uint128 newValue);
+    event JackpotRateUpdated(address board, uint8 oldValue, uint8 newValue);
+    event PrizeFundUpdated(address board, uint128 oldValue, uint128 newValue);
+    event MaxRoundTimeSecUpdated(address board, uint64 oldValue, uint64 newValue);
+    event MaxMoveTimeSecUpdated(address board, uint64 oldValue, uint64 newValue);
+    event RoundAutostartSecUpdated(address board, optional(uint64) oldValue, optional(uint64) newValue);
+    event MaxPlayersUpdated(address board, uint16 oldValue, uint16 newValue);
+    event PlayerGiveUpAllowedUpdated(address board, bool oldValue, bool newValue);
+}
