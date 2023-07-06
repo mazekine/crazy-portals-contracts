@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // OpenZeppelin Contracts v4.4.1 (utils/Context.sol)
 
-pragma ever-solidity >= 0.62.0;
+pragma ever-solidity >= 0.66.0;
 
 /**
  * @dev Provides information about the current execution context, including the

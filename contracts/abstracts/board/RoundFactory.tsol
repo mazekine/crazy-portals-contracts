@@ -4,10 +4,15 @@ pragma ever-solidity >= 0.66.0;
 import "../../interfaces/board/IRoundFactory.tsol";
 import "../../libraries/BaseErrorCodes.tsol";
 import "../../libraries/Utils.tsol";
+import "../../libraries/Gas.tsol";
 import "../../interfaces/common/IGenericStructures.tsol";
-import "../round/RoundConfiguration.tsol";
+import "./RoundConfiguration.tsol";
+import "../../Platform.tsol";
 
 abstract contract RoundFactory is IRoundFactory, RoundConfiguration {
+    TvmCell         static platformCode;
+    TvmCell         static roundCode;
+
     optional(uint64) public latestRoundNonce;
     uint64[]         public rounds;
 
@@ -20,51 +25,68 @@ abstract contract RoundFactory is IRoundFactory, RoundConfiguration {
         require(boardInitialized, BaseErrorCodes.TOO_EARLY);
 
         uint64 roundId = Utils._getTimestamp();
-
-
-        optional(uint64) autostart = roundAutostartSec;
-        if(autostart.hasValue()) {
-            autostart = autostart.get() + roundId;
+        for(uint64 r : rounds) {
+            require(roundId != r, BaseErrorCodes.ITEM_EXISTS);
         }
 
+        address newRound = _deployRound(roundId);
+        rounds.push(roundId);
 
-        uint64 roundId = Utils._getTimestamp();
-        require(!rounds.exists(roundId), BaseErrorCodes.ITEM_EXISTS);
+        //boardTreasury.roundTreasury[roundId] = RoundTreasury(prizeFundPerRound, 0, emptyMap);
 
-        optional(uint64) autostart = roundAutostartSec;
-        if (autostart.hasValue()) {
-            autostart = autostart.get() + roundId;
-        }
-
-        Round newRound = Round(
-            roundId,
-            RoundStatus.NotStarted,
-            address(0),
-
-            maxPlayers,
-            giveUpAllowed,
-
-            0, //roundId + maxRoundDurationSec,
-            maxRoundDurationSec,
-            maxMoveDurationSec,
-            autostart,
-
-            entryStake,
-            prizeFundPerRound,
-            false,
-            rake,
-            jackpotRate
-        );
-
-        rounds[roundId] = newRound;
-        boardTreasury.roundTreasury[roundId] = RoundTreasury(prizeFundPerRound, 0, emptyMap);
-
-        emit RoundCreated(address(this), roundId);
+        emit RoundCreated(address(this), roundId, newRound);
 
         msg.sender.transfer({value: 0, flag: MsgFlag.REMAINING_GAS, bounce: false});
     }
 
+    function getRoundAddress(uint64 roundId) public view returns(address) {
+        return address(
+            tvm.hash(
+                _buildRoundInitialData(roundId)
+            )
+        );
+    }
 
+    function _deployRound(uint64 roundId) internal view returns (address) {
+        return new CPlatform {
+                stateInit: _buildRoundInitialData(roundId),
+                value: Gas.DEPLOY_ACCOUNT_VALUE
+            }(
+                roundCode,
+                _buildRoundConstructorParams(),
+                msg.sender
+            );
+    }
 
+    function _buildRoundConstructorParams() internal view returns (TvmCell) {
+        return abi.encode(
+            board,
+            redBeams,
+            blueBeams,
+            maxPlayers,
+            giveUpAllowed,
+            maxRoundDurationSec,
+            maxMoveDurationSec,
+            roundAutostartSec,
+            entranceFee,
+            prizeFundPerRound,
+            rake,
+            jackpotRate
+        );
+    }
+
+    function _buildRoundInitialData(uint64 roundId) internal view returns (TvmCell) {
+        return tvm.buildStateInit({
+            contr: Platform,
+            varInit: {
+                root: address(this),
+                platformType: 0,
+                initialData: abi.encode(roundId),
+                platformCode: platformCode
+            },
+            pubkey: 0,
+            code: platformCode
+        });
+    }
 
 }

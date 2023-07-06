@@ -1,0 +1,23 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+pragma ever-solidity >= 0.66.0;
+
+abstract contract RoundConfigurationStorage {
+    //  Default round configurations
+    uint64  constant MAX_ROUND_DURATION_SEC_DEFAULT     = 30 * 60;    //  30 minutes
+    uint64  constant MOVE_DURATION_SEC_DEFAULT          = 1 * 60;     //  1 minute
+    uint64  constant ROUND_AUTOSTART_SEC_DEFAULT        = 5 * 60;     //  5 minutes
+    uint128 constant RAKE_DEFAULT                       = 0.01 ever;  //  Default rake rate for a game
+    uint8   constant JACKPOT_RATE_DEFAULT               = 0;          //  Default jackpot rate
+    uint128 constant PRIZE_FUND_PER_ROUND_DEFAULT       = 1 ever;     //  Default prize fund per game
+
+    //  Round settings
+    uint64  public maxRoundDurationSec = MAX_ROUND_DURATION_SEC_DEFAULT;  // Maximum round duration in seconds
+    uint64  public maxMoveDurationSec = MOVE_DURATION_SEC_DEFAULT;        // Maximum time for a step within round, in seconds
+    optional(uint64)  public roundAutostartSec = ROUND_AUTOSTART_SEC_DEFAULT;       // The period in seconds after creation of the round when it can start
+    uint128 public prizeFundPerRound = PRIZE_FUND_PER_ROUND_DEFAULT;    // Prize fund setting per round
+    uint16  public maxPlayers = 4;                                      // Number of players in a round
+    uint128 public entranceFee;                                          // Entry stake setting per round
+    bool    public giveUpAllowed = false;                               // Indicates if a player can give up the round before its end
+    uint128 public rake = RAKE_DEFAULT;                                 // Amount paid to the board on each roll
+    uint8   public jackpotRate = JACKPOT_RATE_DEFAULT;                  // Share of rake that is saved to the jackpot fund
+}

@@ -1,5 +1,5 @@
-// SPDX-License-Identifier: UNLICENSED
-pragma ever-solidity >= 0.62.0;
+// SPDX-License-Identifier: AGPL-3.0-or-later
+pragma ever-solidity >= 0.66.0;
 
 interface IGenericStructures {
     enum RoundStatus {
@@ -14,6 +14,7 @@ interface IGenericStructures {
         uint64              id;
         RoundStatus         status;
         address             winner;
+        address             board;
 
         //  General settings
         uint16              maxPlayers;
@@ -34,8 +35,8 @@ interface IGenericStructures {
     }
 
     struct Coordinate {
-        uint16 x;
-        uint16 y;
+        uint8 x;
+        uint8 y;
     }
 
     enum PathType {
@@ -49,29 +50,31 @@ interface IGenericStructures {
     }
 
     struct Board {
-        uint16 columns;
-        uint16 rows;
+        uint8 columns;
+        uint8 rows;
     }
 
     struct Move {
         uint64    expiresAt;
-        mapping(address => Step[]) playerSteps;
+        mapping(address => uint32[]) playerSteps;
     }
 
     struct Location {
-        uint16      cell;
-        Coordinate coordinate;
+        uint8       cell;
+        Coordinate  coordinate;
     }
 
+/*
     struct Step {
         Location from;
         Location to;
     }
+*/
 
     struct RoundTreasury {
         uint128 prize;
         uint128 entranceFee;
-        mapping(address => uint128) playerJackpot;
+        //mapping(address => uint128) playerJackpot;
     }
 
     struct BoardTreasury {

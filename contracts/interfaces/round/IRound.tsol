@@ -1,10 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-pragma ever-solidity >= 0.62.0;
+pragma ever-solidity >= 0.66.0;
 
 import "../common/IGenericStructures.tsol";
-import "../../abstracts/round/RoundConfiguration.tsol";
 
-interface IRound is IGenericStructures, RoundConfiguration {
+interface IRound is IGenericStructures {
     //  Game flow events
     event RoundFinished(address board, uint64 roundId, address winner);
     event DiceRolled(address player, uint16 dice);
@@ -12,7 +11,7 @@ interface IRound is IGenericStructures, RoundConfiguration {
 
     //  Player events
     event RoundJoined(address board, uint64 roundId, address player);
-    event PlayerMoved(address board, uint64 round, address player, Location from, Location to);
+    event PlayerMoved(address board, uint64 round, address player, uint32 path);
     event PlayerWon(address board, uint64 round, address player, uint128 amount);
     event PlayerRemovedFromRound(address board, uint64 roundId, address player);
 
@@ -21,10 +20,12 @@ interface IRound is IGenericStructures, RoundConfiguration {
     event JackpotDrawn(address board, uint64 roundId, address player, uint128 amount);
     event JackpotClaimed(address board, uint64 roundId, address player, uint128 amount);
 
-    function getRound(uint64 roundId) external view responsible returns (optional(Round) round);
+    //function getRound(uint64 roundId) external view responsible returns (optional(Round) round);
     function getRoundLatestMove(uint64 roundId) external view responsible returns (optional(Move) move);
-    function joinRound(uint64 roundId) external /*responsible returns (bool result)*/;
-    function updateRoundStatus(uint64 roundId) external;
+    function join(CallMetadata meta) external;   //  Only callable from board contract
+    function updateRoundStatus() external;
+    function getRoundStatus(CallMetadata _meta) external view responsible returns (uint64 roundId, RoundStatus status, CallMetadata meta);
+    function decodePath(uint32 mask) external pure returns (Location from, Location to);
 
     function roll() external /*responsible returns (uint16 dice, Coordinate newPosition)*/;
     function claim(uint64 roundId) external;

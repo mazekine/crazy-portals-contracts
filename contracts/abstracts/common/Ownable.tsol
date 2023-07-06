@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // OpenZeppelin Contracts v4.4.1 (access/Ownable.sol)
 
-pragma ever-solidity >= 0.62.0;
+pragma ever-solidity >= 0.66.0;
 
 import "./Context.tsol";
 import "@broxus/contracts/contracts/libraries/MsgFlag.tsol";
-import "../libraries/BaseErrorCodes.tsol";
+import "../../libraries/BaseErrorCodes.tsol";
 
 abstract contract Ownable is Context {
     address internal _owner;

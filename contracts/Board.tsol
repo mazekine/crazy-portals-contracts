@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 pragma ever-solidity >= 0.66.0;
 
-import "./abstracts/Cashback.tsol";
-import "./abstracts/Jackpot.tsol";
-import "./abstracts/Ownable.tsol";
+import "./abstracts/common/Cashback.tsol";
+import "./abstracts/board/Jackpot.tsol";
+import "./abstracts/common/Ownable.tsol";
 import "./Round.tsol";
 import "./abstracts/board/RoundFactory.tsol";
 import "./interfaces/board/IBoard.tsol";
@@ -11,7 +11,8 @@ import "./libraries/Gas.tsol";
 import "@broxus/contracts/contracts/libraries/MsgFlag.tsol";
 
 contract Board is IBoard, Ownable, Cashback, Round, Jackpot, RoundFactory {
-    uint64  public static nonce;
+    uint64                      public static nonce;
+    mapping(address => uint64)  public        joinQueue;
 
     /**
         @param  owner   Default owner of the board
@@ -21,7 +22,7 @@ contract Board is IBoard, Ownable, Cashback, Round, Jackpot, RoundFactory {
         require((size % 2 == 0) || (size >= 6) || (size <= 16), BaseErrorCodes.NOT_ALLOWED);
 
         tvm.accept();
-        board = Board(size, size);
+        boardAddress = Board(size, size);
 
         _initOwnable(owner);
     }
@@ -41,8 +42,8 @@ contract Board is IBoard, Ownable, Cashback, Round, Jackpot, RoundFactory {
         cashback 
     {
         require(!boardInitialized, BaseErrorCodes.ITEM_EXISTS);
-        require(_maxRedBeams <= (board.rows - 2), BaseErrorCodes.VALUE_TOO_BIG);
-        require(_maxBlueBeams <= (board.rows - 2), BaseErrorCodes.VALUE_TOO_BIG);
+        require(_maxRedBeams <= (boardAddress.rows - 2), BaseErrorCodes.VALUE_TOO_BIG);
+        require(_maxBlueBeams <= (boardAddress.rows - 2), BaseErrorCodes.VALUE_TOO_BIG);
 
         redBeamsNumber = _maxRedBeams;
         blueBeamsNumber = _maxBlueBeams;
@@ -74,50 +75,108 @@ contract Board is IBoard, Ownable, Cashback, Round, Jackpot, RoundFactory {
 
         boardInitialized = true;
 
-        emit BoardGenerated(board, redBeams, blueBeams);
+        emit BoardGenerated(boardAddress, redBeams, blueBeams);
     }
 
-    function updateRoundStatus(uint64 roundId) external override cashback {
-        tvm.rawReserve(address(this).balance - msg.value + Gas.TX_STORAGE_FEE, 0);
-        _updateRoundStatus(roundId);
-    }
+    /**
+        Joins the requesting player to the specified round
 
-    function _updateRoundStatus(uint64 roundId) internal {
-        if(!rounds.exists(roundId)) return;
+        @param      roundId Round identifier
+    */
+    function joinRound(uint64 roundId) external override {
+        tvm.rawReserve(address(this).balance - msg.value + Gas.TX_STORAGE_FEE, 0); //  Reserve all except message value less storage fee
 
-        Round round = rounds[roundId];
-        uint64 timestamp = Utils._getTimestamp();
+        require(rounds.exists(roundId), BaseErrorCodes.ITEM_NOT_FOUND);
 
-        //  Check if round has expired
-        if(round.validUntil > 0 && round.validUntil <= timestamp) {
-            rounds[roundId].status = RoundStatus.Expired;
-            tvm.commit();
+        address player = msg.sender;
+        if(playerRound.exists(player)) {
+            //  Check that player is not joining the same round
+            require(playerRound[player] != roundId, BaseErrorCodes.NOTHING_CHANGED);
+
+            joinQueue[player] = roundId;
+
+            //  Check that that player is not participating in an active round already
+            address oldRoundAddress = getRoundAddress(playerRound[playerRound]);
+            CallMetadata meta = CallMetadata(
+                roundId,
+                player
+            );
+
+            IRound(oldRoundAddress).getRoundStatus{
+                value: 0,
+                flag: MsgFlag.ALL_NOT_RESERVED,
+                bounce: false,
+                callback: onPlayerJoiningRound
+            }(meta);
+
             return;
+            //uint64 oldRound = playerRound[player];
+            //require(rounds[oldRound].status == RoundStatus.Finished || rounds[oldRound].status == RoundStatus.Expired, BaseErrorCodes.WRONG_STATE);
         }
 
-        //  Check if round is in final status
-        if(round.status == RoundStatus.Finished || round.status == RoundStatus.Expired) return;
+        CallMetadata meta = CallMetadata(roundId, player);
+        address roundAddress = getRoundAddress(roundId);
 
-        //  Check if all players have joined
-        if(round.status == RoundStatus.NotStarted) {
-            if(roundPlayers[roundId].length != round.maxPlayers) return;
+        IRound(roundAddress).join{value: 0, flag: MsgFlag.ALL_NOT_RESERVED, bounce: false}(meta);
 
-            rounds[roundId].status = RoundStatus.Ready;
-        }
 
-        //  Check if
-        if(round.status == RoundStatus.Ready) {
-            if(roundPlayers[roundId].length != round.maxPlayers) return;
-
-            rounds[roundId].validUntil = round.roundDuration + Utils._getTimestamp();
-            rounds[roundId].status = RoundStatus.Active;
-            tvm.commit();
-        }
-
-        if(round.status == RoundStatus.Active) {
-
-        }
+        //return {value: 0, bounce: false, flag: MsgFlag.REMAINING_GAS} (true);
     }
+
+    /**
+        Callback method called by old round in case of player joining a new one
+
+        @param  oldRoundId  Identifier of the old round
+        @param  status      Round status
+    */
+    function onPlayerJoiningRound(uint64 oldRoundId, RoundStatus status, CallMetadata meta) external override {
+        tvm.rawReserve(address(this).balance - msg.value + Gas.TX_STORAGE_FEE, 0);
+
+        address player = meta.returnGasTo;
+
+        if(
+            !playerRound.exists(player) ||
+            playerRound[player] != oldRoundId ||
+            msg.sender != getRoundAddress(oldRoundId)
+        ) {
+            player.transfer({value: 0, flag: MsgFlag.ALL_NOT_RESERVED, bounce: false});
+            revert(BaseErrorCodes.ITEM_NOT_FOUND);
+        }
+
+        //  Check that
+        if(joinQueue.exists(player)) {
+            if(status == RoundStatus.Finished || status == RoundStatus.Expired) {
+                //  Calculate round address
+                address roundAddress = getRoundAddress(meta.callId);
+
+                //  Clean garbage
+                delete joinQueue[player];
+
+                //  Add player to the round
+                IRound(roundAddress).join{value: 0, flag: MsgFlag.ALL_NOT_RESERVED, bounce: false}(meta);
+
+                return;
+            }
+        }
+
+        player.transfer({value: 0, flag: MsgFlag.ALL_NOT_RESERVED, bounce: false});
+    }
+
+    function onPlayerJoined(CallMetadata meta) external override {
+        tvm.rawReserve(address(this).balance - msg.value + Gas.TX_STORAGE_FEE, 0);
+
+        address player = meta.returnGasTo;
+        uint64 roundId = meta.callId;
+
+        if(msg.sender == getRoundAddress(roundId)) {
+            //  Update the information in which round the player is now
+            playerRound[player] = roundId;
+        }
+
+        player.transfer({value: 0, flag: MsgFlag.ALL_NOT_RESERVED, bounce: false});
+    }
+
+
 
 
     /**
@@ -179,7 +238,7 @@ contract Board is IBoard, Ownable, Cashback, Round, Jackpot, RoundFactory {
         responsible
         override
     returns (Board _board, Path[] _redBeams, Path[] _blueBeams) {
-        return {value: 0, flag: MsgFlag.ALL_NOT_RESERVED, bounce: false} (board, redBeams, blueBeams);
+        return {value: 0, flag: MsgFlag.ALL_NOT_RESERVED, bounce: false} (boardAddress, redBeams, blueBeams);
     }
 
     function getRounds(optional(RoundStatus) status) external view responsible override returns (Round[] _rounds) {
@@ -221,19 +280,19 @@ contract Board is IBoard, Ownable, Cashback, Round, Jackpot, RoundFactory {
 
     function _getCell(uint16 x, uint16 y) private view returns (uint16 cell) {
         bool rtl = (y % 2 == 0);
-        if (rtl) x = board.columns - x + 1;
-        return ((y - 1) * board.columns + x);
+        if (rtl) x = boardAddress.columns - x + 1;
+        return ((y - 1) * boardAddress.columns + x);
     }
 
     function _getCoordinate(uint16 cell) private view returns (Coordinate) {
         if(cell == 0) return Coordinate(0, 0);
 
-        uint16 y = (cell - 1) / board.columns + 1;
-        uint16 x = cell - (y - 1) * board.columns;
+        uint16 y = (cell - 1) / boardAddress.columns + 1;
+        uint16 x = cell - (y - 1) * boardAddress.columns;
 
         bool rtl = (y % 2 == 0);
         if (rtl) {
-            x = board.columns - x + 1;
+            x = boardAddress.columns - x + 1;
         }
 
         return Coordinate(x, y);
@@ -248,17 +307,17 @@ contract Board is IBoard, Ownable, Cashback, Round, Jackpot, RoundFactory {
 
         bool flag;
         while(!flag) {
-            head.x = rnd.next(board.columns) + 1;
-            head.y = rnd.next(board.rows - 1) + 2;              //  Head cannot happen on the first row
+            head.x = rnd.next(boardAddress.columns) + 1;
+            head.y = rnd.next(boardAddress.rows - 1) + 2;              //  Head cannot happen on the first row
             headCell = _getCell(head.x, head.y);
 
-            flag =  !(head.y == board.rows && head.x == 1) &&   //  Head cannot be on the final cell
+            flag =  !(head.y == boardAddress.rows && head.x == 1) &&   //  Head cannot be on the final cell
                     !cells[headCell].hasValue();                //  The cell cannot be occupied
         }
 
         flag = false;
         while(!flag) {
-            tail.x = rnd.next(board.columns) + 1;
+            tail.x = rnd.next(boardAddress.columns) + 1;
             tail.y = rnd.next(head.y - 2) + 1;                  //  Tail must be lower than head
             tailCell = _getCell(tail.x, tail.y);
             flag = !cells[tailCell].hasValue();
@@ -281,7 +340,7 @@ contract Board is IBoard, Ownable, Cashback, Round, Jackpot, RoundFactory {
     function _checkBoardInitialized() private {
         if((redBeams.length == redBeamsNumber) && (blueBeams.length == blueBeamsNumber)) {
             boardInitialized = true;
-            emit BoardGenerated(board, redBeams, blueBeams);
+            emit BoardGenerated(boardAddress, redBeams, blueBeams);
         }
     }
 

@@ -1,26 +1,26 @@
-// SPDX-License-Identifier: UNLICENSED
-pragma ever-solidity >= 0.62.0;
+// SPDX-License-Identifier: AGPL-3.0-or-later
+pragma ever-solidity >= 0.66.0;
 
-import "../interfaces/board/IJackpot.tsol";
-import "./Cashback.tsol";
-import "./Ownable.tsol";
-import "../libraries/ArrayHelper.tsol";
+import "../../interfaces/board/IJackpot.tsol";
+import "../common/Cashback.tsol";
+import "../common/Ownable.tsol";
+import "../../libraries/ArrayHelper.tsol";
 
 abstract contract Jackpot is IJackpot, Ownable, Cashback {
     using ArrayHelper for uint[];
 
-    uint16                  constant AVERAGED_PERIODS_DEFAULT = 10;                 //  30 rolls
-    uint64                  constant PROBABILITY_FREEZE_PERIOD_DEFAULT = 60;        //  1 minute
-    uint64                  constant MIN_PROBABILITY_DENOMINATOR = 10_000_000;      //  0.00001%
-    uint64                  constant MAX_PROBABILITY_DENOMINATOR = 100;             //  1%
+    uint16  constant AVERAGED_PERIODS_DEFAULT = 10;                 //  30 rolls
+    uint64  constant PROBABILITY_FREEZE_PERIOD_DEFAULT = 60;        //  1 minute
+    uint64  constant MIN_PROBABILITY_DENOMINATOR = 10_000_000;      //  0.00001%
+    uint64  constant MAX_PROBABILITY_DENOMINATOR = 100;             //  1%
 
-    uint16                  public jackpotAveragedPeriods = AVERAGED_PERIODS_DEFAULT;
-    uint64                  public jackpotProbabilityFreezePeriod = PROBABILITY_FREEZE_PERIOD_DEFAULT;
-    uint64                  public jackpotMinProbability = MIN_PROBABILITY_DENOMINATOR;
-    uint64                  public jackpotMaxProbability = MAX_PROBABILITY_DENOMINATOR;
-    uint64                  public curJackpotProbability = jackpotMaxProbability;
-    uint64                         jackpotWinningNumber;
-    uint64                         jackpotFreezeProbabilityUntil;
+    uint16  public jackpotAveragedPeriods = AVERAGED_PERIODS_DEFAULT;
+    uint64  public jackpotProbabilityFreezePeriod = PROBABILITY_FREEZE_PERIOD_DEFAULT;
+    uint64  public jackpotMinProbability = MIN_PROBABILITY_DENOMINATOR;
+    uint64  public jackpotMaxProbability = MAX_PROBABILITY_DENOMINATOR;
+    uint64  public curJackpotProbability = jackpotMaxProbability;
+    uint64         jackpotWinningNumber;
+    uint64         jackpotFreezeProbabilityUntil;
 
     uint64 latestStepTimestamp;
     uint[] stepIntervals;
@@ -151,17 +151,5 @@ abstract contract Jackpot is IJackpot, Ownable, Cashback {
 
     function getRandomizer(uint64 roundId) internal view returns (uint) {
         return math.divr(uint(address(this).balance) + uint(roundId) + uint(averageStepInterval), 3);
-    }
-
-    uint[] something;
-
-    function tryMapSort(uint[] arr) external returns(uint[]) {
-        something = arr.mapSort();
-        return something;
-    }
-
-    function tryQuickSort(uint[] arr) external returns(uint[]) {
-        something = arr.quickSort(0, arr.length - 1);
-        return something;
     }
 }

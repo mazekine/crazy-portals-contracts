@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-pragma ever-solidity >= 0.62.0;
+pragma ever-solidity >= 0.66.0;
 
 import "@broxus/contracts/contracts/libraries/MsgFlag.tsol";
-import "../libraries/Utils.tsol";
+import "../../libraries/Utils.tsol";
 
 /// @title  Contract with cashback
 /// Returns all not reserved funds to sender after executing the payable function
