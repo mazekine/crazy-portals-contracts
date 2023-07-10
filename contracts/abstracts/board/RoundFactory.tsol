@@ -50,7 +50,7 @@ abstract contract RoundFactory is IRoundFactory, RoundConfiguration {
     function _deployRound(uint64 roundId) internal view returns (address) {
         return new CPlatform {
                 stateInit: _buildRoundInitialData(roundId),
-                value: Gas.DEPLOY_ACCOUNT_VALUE
+                value: Gas.DEPLOY_ACCOUNT_FEE
             }(
                 roundCode,
                 _buildRoundConstructorParams(),

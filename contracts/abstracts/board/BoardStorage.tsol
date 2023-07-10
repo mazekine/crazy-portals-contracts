@@ -10,8 +10,9 @@ abstract contract BoardStorage is IGenericStructures {
     uint16  public redBeamsNumber;                                      // Number of red portals to generate on board
 
     //  Configuration storage
-    bool    public boardInitialized;                                    // Indicates if the board was generated already
-    Board   public board;     //  Board size
-    uint32[]       redBeams;  //  Red portals
-    uint32[]       blueBeams; //  Blue portals
+    bool    public boardInitialized; // Indicates if the board was generated already
+    Board   public board;            //  Board size
+    uint48[]       redBeams;         //  Red portals
+    uint48[]       blueBeams;        //  Blue portals
+    mapping(uint8 => uint48) cells;  //  Maps cells to portals
 }

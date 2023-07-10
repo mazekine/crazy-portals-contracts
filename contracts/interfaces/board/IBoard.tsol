@@ -5,12 +5,13 @@ import "../common/IGenericStructures.tsol";
 
 interface IBoard is IGenericStructures {
     //  Board configuration events
-    event BoardGenerated(Board board, Path[] redBeams, Path[] blueBeams);
+    event BoardGenerated(Board board, uint48[] redBeams, uint48[] blueBeams);
 
-    function generateBoard(uint seed, uint16 maxRedBeams, uint16 maxBlueBeams) external;
-    function getBoard() external view responsible returns (Board board, Path[] redBeams, Path[] blueBeams);
+    function generateBoard(uint seed, uint8 maxRedBeams, uint8 maxBlueBeams) external;
+    function getBoard() external view responsible returns (Board board, uint48[] redBeams, uint48[] blueBeams);
 
     function checkPlayerRound(address player, uint64 roundId) external;
     function onPlayerJoiningRound(uint64 oldRoundId, RoundStatus status, CallMetadata meta) external;
     function onPlayerJoined(CallMetadata meta) external;
+    function onJackpotAccrued(CallMetadata meta, uint128 rake, uint8 jackpotRate) external;
 }

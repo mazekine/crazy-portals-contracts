@@ -7,14 +7,14 @@ import "../common/Ownable.tsol";
 import "../common/Cashback.tsol";
 import "./RoundConfigurationStorage.tsol";
 
-abstract contract RoundConfiguration is IRoundConfiguration, Ownable, Cashback, RoundConfigurationStorage, BoardStorage {
+abstract contract RoundConfiguration is Ownable, Cashback, BoardStorage, IRoundConfiguration, RoundConfigurationStorage {
 
     constructor() public {}
 
     /**
-     Configures maximum number of players per round.
+        Configures maximum number of players per round.
 
-@dev    Affects only future rounds
+        @dev    Affects only future rounds
         @param  qty Number of players
     */
     function setMaxPlayers(uint16 qty) external override onlyOwner reservable cashback {

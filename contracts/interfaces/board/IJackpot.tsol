@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 pragma ever-solidity >= 0.66.0;
 
-interface IJackpot {
+import "../common/IGenericStructures.tsol";
+
+interface IJackpot is IGenericStructures {
     //  Events
     event JackpotAveragedPeriodsUpdated(address board, uint16 oldVal, uint16 newVal);
     event JackpotMaxProbabilityUpdated(
@@ -16,6 +18,8 @@ interface IJackpot {
     );
     event JackpotFreezePeriodUpdated(address board, uint64 oldValue, uint64 newValue);
     event JackpotProbabilityUpdated(address board, uint64 oldValue, uint64 newValue);
+    event JackpotDrawn(address indexed board, uint64 indexed roundId, address indexed player, uint128 amount);
+    event JackpotClaimed(address board, uint64 roundId, address player, uint128 amount);
 
     //  Configurators
     function setJackpotAveragedPeriods(uint16 qty) external;
@@ -23,4 +27,7 @@ interface IJackpot {
     function setJackpotMinProbability(uint64 p) external;
     function setJackpotProbabilityFreezePeriod(uint64 period) external;
 
+    function onJackpotAccrued(CallMetadata meta, uint128 rake, uint8 jackpotRate) external;
+
+    function claimJackpot(optional(CallMetadata) meta) external;
 }

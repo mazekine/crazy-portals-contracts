@@ -3,28 +3,9 @@
 pragma ever-solidity >= 0.66.0;
 
 library Gas {
-    uint128 constant DEPLOY_PROPOSAL_VALUE              = 10 ever;
-    uint128 constant PROPOSAL_INITIAL_BALANCE           = 1 ever;
-    uint128 constant ACCOUNT_INITIAL_BALANCE            = 0.2 ever;
-    uint128 constant DEPLOY_ACCOUNT_VALUE               = 0.5 ever;
-    uint128 constant EXECUTE_TON_ACTION_VALUE           = 0.5 ever;
-    uint128 constant EXECUTE_ETH_ACTION_VALUE           = 0.5 ever;
-    uint128 constant SEND_EXPECTED_WALLET_VALUE         = 0.1 ever;
-    uint128 constant WITHDRAW_VALUE                     = 1 ever;
-    uint128 constant CAST_VOTE_VALUE                    = 1 ever;
-    uint128 constant UPGRADE_ACCOUNT_MIN_VALUE          = 2 ever;
-    uint128 constant UPGRADE_PROPOSAL_MIN_VALUE         = 2 ever;
-    uint128 constant UNLOCK_VOTE_VALUE                  = 0.1 ever;
-    uint128 constant UNLOCK_CASTED_VOTE_VALUE           = 0.1 ever;
-    uint128 constant UNLOCK_LOCKED_VOTE_TOKENS_VALUE    = 0.5 ever;
-    uint128 constant PROPOSAL_DEPLOYED_CALLBACK_VALUE   = 0.2 ever;
-
-    uint128 constant UPDATE_ORDER_PRICE_CALLBACK        = 0.2 ever;
-    uint128 constant GET_PROMO_OFFER                    = 0.5 ever;
-    uint128 constant DEPLOY_TOKEN_WALLET                = 0.2 ever;
-    uint128 constant DEPLOY_TOKEN_WALLET_MIN_VALUE      = 0.1 ever;
-    uint128 constant CHECK_TOKEN_WALLET_BALANCE         = 0.2 ever;
-    uint128 constant CONTRACT_MIN_BALANCE               = 0.2 ever;
-    uint128 constant PAYMENT_VALUE                      = 0.1 ever;
-    uint128 constant TX_STORAGE_FEE                     = 0.05 ever;
+    uint128 constant DEPLOY_ACCOUNT_FEE     = 0.5 ever;
+    uint128 constant CONTRACT_MIN_BALANCE   = 0.2 ever;
+    uint128 constant TX_STORAGE_FEE         = 0.05 ever;
+    uint128 constant JACKPOT_ACCRUAL_FEE    = 0.2 ever;
+    uint128 constant JACKPOT_CALL_FEE       = 0.2 ever;
 }

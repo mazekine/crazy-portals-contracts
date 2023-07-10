@@ -9,7 +9,7 @@ interface IGenericStructures {
     /**
         Round information container
     */
-    struct Round {
+    struct RoundMetadata {
         //  Basic information
         uint64              id;
         RoundStatus         status;
@@ -56,7 +56,7 @@ interface IGenericStructures {
 
     struct Move {
         uint64    expiresAt;
-        mapping(address => uint32[]) playerSteps;
+        mapping(address => uint48[]) playerSteps;
     }
 
     struct Location {
@@ -74,13 +74,13 @@ interface IGenericStructures {
     struct RoundTreasury {
         uint128 prize;
         uint128 entranceFee;
-        //mapping(address => uint128) playerJackpot;
     }
 
     struct BoardTreasury {
         uint128 rakes;
         uint128 jackpot;
-        mapping(uint64 => RoundTreasury) roundTreasury;
+        mapping(address => uint128) playerJackpot;
+        //mapping(uint64 => RoundTreasury) roundTreasury;
     }
 
     struct CallMetadata {

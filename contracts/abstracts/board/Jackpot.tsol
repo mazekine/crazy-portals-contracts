@@ -5,8 +5,10 @@ import "../../interfaces/board/IJackpot.tsol";
 import "../common/Cashback.tsol";
 import "../common/Ownable.tsol";
 import "../../libraries/ArrayHelper.tsol";
+import "./BoardTreasuryStorage.tsol";
+import "./BoardStorage.tsol";
 
-abstract contract Jackpot is IJackpot, Ownable, Cashback {
+abstract contract Jackpot is Ownable, Cashback, BoardStorage, IJackpot, BoardTreasuryStorage  {
     using ArrayHelper for uint[];
 
     uint16  constant AVERAGED_PERIODS_DEFAULT = 10;                 //  30 rolls
@@ -87,7 +89,7 @@ abstract contract Jackpot is IJackpot, Ownable, Cashback {
         msg.sender.transfer({value: 0, flag: MsgFlag.REMAINING_GAS, bounce: false});
     }
 
-    function registerStepInterval(uint64 timestamp) internal {
+    function _registerStepInterval(uint64 timestamp) internal {
         uint64 delta = Utils._getTimestamp() - latestStepTimestamp + 1;   //  Add 1 millisecond to avoid potential zero deltas in the same block
         stepIntervals.push(delta);
 
@@ -98,13 +100,13 @@ abstract contract Jackpot is IJackpot, Ownable, Cashback {
             stepIntervals.del(0);
         }
 
-        averageStepInterval = getAverageStepInterval();
+        averageStepInterval = _getAverageStepInterval();
         if(averageStepInterval > maxAverageInterval) maxAverageInterval = averageStepInterval;
 
-        updateJackpotProbability();
+        _updateJackpotProbability();
     }
 
-    function updateJackpotProbability() internal {
+    function _updateJackpotProbability() internal {
         uint64 timestamp = Utils._getTimestamp();
 
         //  Check that the probability is not frozen
@@ -134,14 +136,14 @@ abstract contract Jackpot is IJackpot, Ownable, Cashback {
         }
     }
 
-    function getAverageStepInterval() internal returns (uint64) {
+    function _getAverageStepInterval() internal returns (uint64) {
         if(stepIntervals.empty()) return 0;
         return uint64(stepIntervals.median());
     }
 
-    function drawJackpot(uint64 roundId) internal view returns (bool) {
+    function _drawJackpot(uint64 roundId) internal view returns (bool) {
         //  Take an average of user balance, round Id and average step interval to get a decent random number
-        uint randomizer = getRandomizer(roundId);
+        uint randomizer = _getRandomizer(roundId);
         rnd.shuffle(randomizer);
 
         //  Generate a random number and compare it with current winning one
@@ -149,7 +151,46 @@ abstract contract Jackpot is IJackpot, Ownable, Cashback {
         return (playerNumber == jackpotWinningNumber);
     }
 
-    function getRandomizer(uint64 roundId) internal view returns (uint) {
+    function _getRandomizer(uint64 roundId) internal view returns (uint) {
         return math.divr(uint(address(this).balance) + uint(roundId) + uint(averageStepInterval), 3);
     }
+
+    function onJackpotAccrued(CallMetadata meta, uint128 rake, uint8 jackpotRate) external override {
+        _registerStepInterval(Utils._getTimestamp());
+
+        uint128 jackpotAccrual = math.muldiv(rake, jackpotRate, 100);
+        uint128 rakeRemainder = rake - jackpotAccrual;
+
+        treasury.rakes += rakeRemainder;
+        treasury.jackpot += jackpotAccrual;
+
+        if(_drawJackpot(meta.callId)) {
+            emit JackpotDrawn(address(this), meta.callId, meta.returnGasTo, treasury.jackpot);
+
+            treasury.playerJackpot[meta.returnGasTo] += treasury.jackpot;
+            treasury.jackpot = 0;
+        }
+    }
+
+    /**
+        Allows the winner to claim the jackpot.
+    */
+    function claimJackpot(optional(CallMetadata) meta) public override {
+        address player;
+        if(meta.hasValue()) {
+            player = meta.get().returnGasTo;
+        } else {
+            player = msg.sender;
+        }
+
+        if(treasury.playerJackpot.exists(player)) {
+            if(treasury.playerJackpot[player] > 0) {
+                player.transfer({value: treasury.playerJackpot[player], bounce: false});
+                delete treasury.playerJackpot[player];
+            }
+        }
+
+        player.transfer({value: 0, flag: MsgFlag.REMAINING_GAS, bounce: false});
+    }
+
 }

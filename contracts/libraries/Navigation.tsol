@@ -5,14 +5,19 @@ import "../interfaces/common/IGenericStructures.tsol";
 
 library Navigation {
 
-    function _getCell(uint8 x, uint8 y, uint8 size) internal returns (uint8 cell) {
+    function getCell(uint8 x, uint8 y, uint8 size) public returns (uint8 cell) {
         bool rtl = (y % 2 == 0);
         if (rtl) x = size - x + 1;
         return ((y - 1) * size + x);
     }
 
-    function _getCoordinate(uint8 cell, uint8 size) internal returns (IGenericStructures.Coordinate) {
-        if(cell == 0) return IGenericStructures.Coordinate(0, 0);
+    function getCoordinate(uint8 cell, uint8 size) public returns (IGenericStructures.Coordinate) {
+        (uint8 x, uint8 y) = getXY(cell, size);
+        return IGenericStructures.Coordinate(x, y);
+    }
+
+    function getXY(uint8 cell, uint8 size) public returns (uint8 _x, uint8 _y) {
+        if(cell == 0) return (0, 0);
 
         uint8 y = (cell - 1) / size + 1;
         uint8 x = cell - (y - 1) * size;
@@ -22,10 +27,30 @@ library Navigation {
             x = size - x + 1;
         }
 
-        return IGenericStructures.Coordinate(x, y);
+        return (x, y);
     }
 
-    function _decodePortal(uint32 mask) internal returns (
+    function encodeLocation(uint8 cell, uint8 x, uint8 y) public returns (uint24) {
+        uint24 encodedMask = 0;
+
+        encodedMask |= uint24(cell) << 16;
+        encodedMask |= uint24(x)    << 8;
+        encodedMask |= uint24(y);
+
+        return encodedMask;
+    }
+
+    function decodeLocation(uint24 mask) public returns (uint8 cell, uint8 x, uint8 y) {
+        uint8 filter8 = 0xFF;
+
+        return (
+            uint8(mask >> 16),
+            uint8((mask >> 8) & filter8),
+            uint8(mask & filter8)
+        );
+    }
+
+    function decodePath(uint48 mask) public returns (
         uint8 fromCell,
         uint8 fromX,
         uint8 fromY,
@@ -33,41 +58,53 @@ library Navigation {
         uint8 toX,
         uint8 toY
     ) {
-        uint8 filter8 = 0xFF;   //  ________________________11111111
-        uint8 filter4 = 0xF;    //  ____________________________1111
+        uint8 filter8 = 0xFF;
 
         return (
-            uint8(mask >> 24),              //  XXXXXXXX________________________ --> ________________________XXXXXXXX
-            uint8((mask >> 20) & filter4),  //  ________XXXX____________________ --> ____________________________XXXX
-            uint8((mask >> 16) & filter4),  //  ____________XXXX________________ --> ____________________________XXXX
-            uint8((mask >> 8)  & filter8),  //  ________________XXXXXXXX________ --> ________________________XXXXXXXX
-            uint8((mask >> 4) & filter4),   //  ________________________XXXX____ --> ____________________________XXXX
-            uint8(mask & filter4)           //  ____________________________XXXX --> ____________________________XXXX
+            uint8(mask >> 40),
+            uint8((mask >> 32) & filter8),
+            uint8((mask >> 24) & filter8),
+            uint8((mask >> 16) & filter8),
+            uint8((mask >> 8)  & filter8),
+            uint8(mask & filter8)
         );
     }
 
-    function _encodePortal(
+    function encodePath(
         uint8 fromCell,
         uint8 fromX,
         uint8 fromY,
         uint8 toCell,
         uint8 toX,
         uint8 toY
-    ) internal returns (uint32 mask) {
-        uint32 encodedMask = 0;
+    ) public returns (uint48 mask) {
+        uint48 encodedMask = 0;
 
-        encodedMask |= uint32(fromCell) << 24;
-        encodedMask |= uint32(fromX)    << 20;
-        encodedMask |= uint32(fromY)    << 16;
-        encodedMask |= uint32(toCell)   << 8;
-        encodedMask |= uint32(toX)      << 4;
-        encodedMask |= uint32(toY);
+        encodedMask |= uint48(fromCell) << 40;
+        encodedMask |= uint48(fromX)    << 32;
+        encodedMask |= uint48(fromY)    << 24;
+        encodedMask |= uint48(toCell)   << 16;
+        encodedMask |= uint48(toX)      << 8;
+        encodedMask |= uint48(toY);
 
         return encodedMask;
     }
 
-    function _getPortalType(uint32 mask) internal returns (IGenericStructures.PathType) {
-        (uint8 fromCell,,, uint8 toCell,,) = _decodePortal(mask);
+    function encodePathByLocations(uint24 from, uint24 to) public returns (uint48 mask) {
+        return ((uint48(from) << 24) | uint48(to));
+    }
+
+    function decodePathToLocations(uint48 mask) public returns (uint24 from, uint24 to) {
+        uint24 filter24 = 0xFFFFFF;
+
+        return (
+            uint24(mask >> 24),
+            uint24(mask & filter24)
+        );
+    }
+
+    function getPortalType(uint48 mask) public returns (IGenericStructures.PathType) {
+        (uint8 fromCell,,, uint8 toCell,,) = decodePath(mask);
         return (fromCell > toCell) ? IGenericStructures.PathType.RedBeam : IGenericStructures.PathType.BlueBeam;
     }
 
