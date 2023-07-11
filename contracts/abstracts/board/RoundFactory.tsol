@@ -13,8 +13,8 @@ abstract contract RoundFactory is IRoundFactory, RoundConfiguration {
     TvmCell         static platformCode;
     TvmCell         static roundCode;
 
-    optional(uint64) public latestRoundNonce;
-    uint64[]         public rounds;
+    uint64[]                        public rounds;
+    mapping(uint64 => RoundStatus)  public roundStatuses;
 
     constructor() public {}
 
@@ -31,8 +31,7 @@ abstract contract RoundFactory is IRoundFactory, RoundConfiguration {
 
         address newRound = _deployRound(roundId);
         rounds.push(roundId);
-
-        //boardTreasury.roundTreasury[roundId] = RoundTreasury(prizeFundPerRound, 0, emptyMap);
+        roundStatuses[roundId] = RoundStatus.NotStarted;
 
         emit RoundCreated(address(this), roundId, newRound);
 

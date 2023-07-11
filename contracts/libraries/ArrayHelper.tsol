@@ -12,6 +12,13 @@ library ArrayHelper {
         array.pop();
     }
 
+    function del(address[] array, uint index) internal {
+        for (uint i = index; i + 1 < array.length; ++i){
+            array[i] = array[i + 1];
+        }
+        array.pop();
+    }
+
     function delVal(uint[] array, uint value) internal {
         for (uint i = 0; i + 1 < array.length; ++i) {
             if(array[i] == value) {

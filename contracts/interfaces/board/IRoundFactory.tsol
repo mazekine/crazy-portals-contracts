@@ -5,9 +5,7 @@ import "../common/IGenericStructures.tsol";
 
 interface IRoundFactory is IGenericStructures {
     function createRound() external /*responsible returns (Round round)*/;
-    function getRounds(optional(RoundStatus) status) external view responsible returns (RoundMetadata[] rounds);
+    function getRounds(optional(RoundStatus) status) external view responsible returns (uint64[] rounds);
 
     event RoundCreated(address board, uint64 roundId, address roundAddress);
-
-
 }

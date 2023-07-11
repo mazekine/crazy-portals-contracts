@@ -15,12 +15,11 @@ contract Board is IBoard, /*Ownable, Cashback, /*Round,*/ Jackpot, RoundFactory 
     mapping(address => uint64)  public        joinQueue;
     mapping(address => uint64)  public        playerRound;   // Active round for player.
 
-
     /**
         @param  owner   Default owner of the board
         @param  size    Size of the board (must be an even number in range [6; 16])
     */
-    constructor(address owner, uint16 size) public {
+    constructor(address owner, uint8 size) public {
         require((size % 2 == 0) || (size >= 6) || (size <= 16), BaseErrorCodes.NOT_ALLOWED);
 
         tvm.accept();
@@ -77,7 +76,14 @@ contract Board is IBoard, /*Ownable, Cashback, /*Round,*/ Jackpot, RoundFactory 
     function joinRound(uint64 roundId) external override {
         tvm.rawReserve(address(this).balance - msg.value + Gas.TX_STORAGE_FEE, 0); //  Reserve all except message value less storage fee
 
-        require(rounds.exists(roundId), BaseErrorCodes.ITEM_NOT_FOUND);
+        bool roundExists = false;
+        for(uint64 r : rounds) {
+            if(r == roundId) {
+                roundExists = true;
+                break;
+            }
+        }
+        require(roundExists, BaseErrorCodes.ITEM_NOT_FOUND);
 
         address player = msg.sender;
         if(playerRound.exists(player)) {
@@ -87,7 +93,7 @@ contract Board is IBoard, /*Ownable, Cashback, /*Round,*/ Jackpot, RoundFactory 
             joinQueue[player] = roundId;
 
             //  Check that that player is not participating in an active round already
-            address oldRoundAddress = getRoundAddress(playerRound[playerRound]);
+            address oldRoundAddress = getRoundAddress(playerRound[player]);
             CallMetadata meta = CallMetadata(
                 roundId,
                 player
@@ -171,9 +177,39 @@ contract Board is IBoard, /*Ownable, Cashback, /*Round,*/ Jackpot, RoundFactory 
         player.transfer({value: 0, flag: MsgFlag.ALL_NOT_RESERVED, bounce: false});
     }
 
+    function onPlayerGiveUp(CallMetadata meta) public override {
+        tvm.rawReserve(address(this).balance - msg.value + Gas.TX_STORAGE_FEE, 0);
 
+        address player = meta.returnGasTo;
+        uint64 roundId = meta.callId;
 
+        //  Check that the sender is a Round contract
+        if(msg.sender == getRoundAddress(roundId)) {
+            //  Check that the player is waiting in the join queue
+            if(playerRound.exists(player)) {
+                //  Check that the player is waiting this specific round to join
+                if(playerRound[player] == roundId) {
+                    //  Update the information in which round the player is now
+                    delete playerRound[player];
+                }
+            }
+        }
 
+        player.transfer({value: 0, flag: MsgFlag.ALL_NOT_RESERVED, bounce: false});
+    }
+
+    function onRoundStatusChange(CallMetadata meta, RoundStatus status) public override {
+        tvm.rawReserve(address(this).balance - msg.value + Gas.TX_STORAGE_FEE, 0);
+
+        uint64 roundId = meta.callId;
+
+        //  Check that the sender is a Round contract
+        if(msg.sender == getRoundAddress(roundId)) {
+            roundStatuses[roundId] = status;
+        }
+
+        meta.returnGasTo.transfer({value: 0, flag: MsgFlag.ALL_NOT_RESERVED, bounce: false});
+    }
 
     /**
         Returns the generated board
@@ -191,68 +227,19 @@ contract Board is IBoard, /*Ownable, Cashback, /*Round,*/ Jackpot, RoundFactory 
         return {value: 0, flag: MsgFlag.ALL_NOT_RESERVED, bounce: false} (board, redBeams, blueBeams);
     }
 
-    function getRounds(optional(RoundStatus) status) external view responsible override returns (RoundMetadata[] _rounds) {
-        if(!status.hasValue()) return {value: 0, flag: MsgFlag.REMAINING_GAS, bounce: false} rounds.values();
+    function getRounds(optional(RoundStatus) status) external view responsible override returns (uint64[] _rounds) {
+        if(!status.hasValue()) return {value: 0, flag: MsgFlag.REMAINING_GAS, bounce: false} rounds;
 
-        RoundMetadata[] result;
+        uint64[] result;
         RoundStatus rs = status.get();
-        for(RoundMetadata round : rounds.values()) {
-            if(round.status == rs) result.push(round);
+        for((uint64 r, RoundStatus s) : roundStatuses) {
+            if(s == rs) result.push(r);
         }
 
         return {value: 0, flag: MsgFlag.REMAINING_GAS, bounce: false} result;
     }
 
-/*
-    function _checkContinuation(address player, uint16 x, uint16 y) internal view returns (uint16 _x, uint16 _y) {
-        _x = x;
-        _y = y;
-
-        for(Path redBeam : redBeams) {
-            if(redBeam.from.x == x && redBeam.from.y == y) {
-                _x = redBeam.to.x;
-                _y = redBeam.to.y;
-
-                emit PathFound(player, redBeam);
-            }
-        }
-
-        for(Path blueBeam : blueBeams) {
-            if(blueBeam.from.x == x && blueBeam.from.y == y) {
-                _x = blueBeam.to.x;
-                _y = blueBeam.to.y;
-
-                emit PathFound(player, blueBeam);
-            }
-        }
-
-        return (_x, _y);
-    }
-*/
-
-/*
-    function _getCell(uint16 x, uint16 y) private view returns (uint16 cell) {
-        bool rtl = (y % 2 == 0);
-        if (rtl) x = board.columns - x + 1;
-        return ((y - 1) * board.columns + x);
-    }
-
-    function _getCoordinate(uint16 cell) private view returns (Coordinate) {
-        if(cell == 0) return Coordinate(0, 0);
-
-        uint16 y = (cell - 1) / board.columns + 1;
-        uint16 x = cell - (y - 1) * board.columns;
-
-        bool rtl = (y % 2 == 0);
-        if (rtl) {
-            x = board.columns - x + 1;
-        }
-
-        return Coordinate(x, y);
-    }
-*/
-
-    function _getAddPath(PathType pathType) private view returns (uint48 path) {
+    function _getAddPath(PathType pathType) private returns (uint48 path) {
         Coordinate head;
         Coordinate tail;
 
@@ -263,7 +250,7 @@ contract Board is IBoard, /*Ownable, Cashback, /*Round,*/ Jackpot, RoundFactory 
         while(!flag) {
             head.x = rnd.next(board.columns) + 1;
             head.y = rnd.next(board.rows - 1) + 2;              //  Head cannot happen on the first row
-            headCell = Navigation.getCell(head.x, head.y, board.columns); //_getCell(head.x, head.y);
+            headCell = Navigation.getCell(head.x, head.y, board.columns);
 
             flag =  !(head.y == board.rows && head.x == 1) &&   //  Head cannot be on the final cell
                     !cells.exists(headCell);               //  The cell cannot be occupied

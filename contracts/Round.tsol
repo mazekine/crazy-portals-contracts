@@ -11,8 +11,11 @@ import "./abstracts/board/RoundConfigurationStorage.tsol";
 import "./abstracts/board/BoardStorage.tsol";
 import "./abstracts/common/Cashback.tsol";
 import "./interfaces/board/IJackpot.tsol";
+import "./libraries/ArrayHelper.tsol";
 
 contract Round is IRound, Cashback, BoardStorage {
+    using ArrayHelper for address[];
+
     uint128 private constant MIN_PLAYERS = 2;                                //  Minimum number of players to attend the game
 
     //  Basic information
@@ -152,7 +155,7 @@ contract Round is IRound, Cashback, BoardStorage {
         roundPlayers.push(player);
 
         //  Update round status
-        _updateRoundStatus();
+        _updateRoundStatus(player);
 
         emit RoundJoined(address(this), id, player);
 
@@ -179,7 +182,7 @@ contract Round is IRound, Cashback, BoardStorage {
         require(playerCell.exists(player), BaseErrorCodes.PLAYER_NOT_FOUND_ON_BOARD);
 
         //  Refresh the round status
-        _updateRoundStatus();
+        _updateRoundStatus(player);
 
         tvm.rawReserve(Gas.TX_STORAGE_FEE, 4);  //  Reserve the original balance before msg.value plus storage fee
 
@@ -289,6 +292,8 @@ contract Round is IRound, Cashback, BoardStorage {
         } else if (boardOverflow == 0) {    //  The player has got to the final cell
             //  Player has won
             status = RoundStatus.Finished;
+            _notifyBoardAboutStatusChange(player);
+
             winner = player;
             step = Navigation.encodePathByLocations(prevLocation, newLocation);
 
@@ -425,21 +430,28 @@ contract Round is IRound, Cashback, BoardStorage {
         msg.sender.transfer({value: 0, flag: MsgFlag.REMAINING_GAS, bounce: false});
     }
 
-    function getRoundStatus() external view responsible override returns (uint64 _id, RoundStatus _status) {
-        return {value: 0, flag: MsgFlag.REMAINING_GAS, bounce: false} (id, status);
+    function giveUp() external override {
+        tvm.rawReserve(address(this).balance - msg.value + Gas.TX_STORAGE_FEE, 0);
+        _removePlayerFromRound(msg.sender);
+    }
+
+    function getRoundStatus(CallMetadata meta) external view responsible override returns (uint64 _id, RoundStatus _status, CallMetadata _meta) {
+        return {value: 0, flag: MsgFlag.REMAINING_GAS, bounce: false} (id, status, meta);
     }
 
     function updateRoundStatus() external override cashback {
         tvm.rawReserve(address(this).balance - msg.value + Gas.TX_STORAGE_FEE, 0);
-        _updateRoundStatus();
+        _updateRoundStatus(msg.sender);
     }
 
-    function _updateRoundStatus() internal {
+    function _updateRoundStatus(address returnGasTo) internal {
         uint64 timestamp = Utils._getTimestamp();
 
         //  Check if round has expired
         if(validUntil > 0 && validUntil <= timestamp) {
             status = RoundStatus.Expired;
+            _notifyBoardAboutStatusChange(returnGasTo);
+
             tvm.commit();
             return;
         }
@@ -463,6 +475,8 @@ contract Round is IRound, Cashback, BoardStorage {
                 status = RoundStatus.Ready;
             }
 
+            _notifyBoardAboutStatusChange(returnGasTo);
+
             tvm.commit();
             return;
         }
@@ -474,6 +488,8 @@ contract Round is IRound, Cashback, BoardStorage {
 
             validUntil = roundDuration + Utils._getTimestamp();
             status = RoundStatus.Active;
+            _notifyBoardAboutStatusChange(returnGasTo);
+
             tvm.commit();
             return;
         }
@@ -483,6 +499,8 @@ contract Round is IRound, Cashback, BoardStorage {
             for((, uint8 pCell) : playerCell) {
                 if(pCell == lastCell) {
                     status = RoundStatus.Finished;
+                    _notifyBoardAboutStatusChange(returnGasTo);
+
                     tvm.commit();
                     return;
                 }
@@ -502,51 +520,58 @@ contract Round is IRound, Cashback, BoardStorage {
     /**
         Safely removes the player from a round and resets its environment
 
-        @param  roundId     Round identifier
         @param  player      Player address
     */
-    function _removePlayerFromRound(uint64 roundId, address player) internal {
-        require(rounds.exists(roundId), BaseErrorCodes.ITEM_NOT_FOUND);
-        require(roundPlayers.exists(roundId), BaseErrorCodes.ITEM_NOT_FOUND);
+    function _removePlayerFromRound(address player) internal {
+        for(uint i = 0; i < roundPlayers.length; i++) {
+            if(roundPlayers[i] == player) {
+                //  Detach position on the board from player
+                if(playerCell.exists(player)) delete playerCell[player];
 
-        //  Detach round from player
-        if(playerRound.exists(player)) delete playerRound[player];
+                //  Remove player from the list of players
+                roundPlayers.del(i);
 
-        //  Detach position on the board from player
-        if(playerCell.exists(player)) delete playerCell[player];
+                if(status == RoundStatus.NotStarted) {
+                    if(address(this).balance > entranceFee && treasury.entranceFee >= entranceFee) {
+                        player.transfer({value: entranceFee, bounce: false});
+                        treasury.entranceFee -= entranceFee;
+                    }
+                } else {
+                    //  In case the only one player is left in the round, they become winner automatically
+                    if(roundPlayers.length == 1) {
+                        winner = roundPlayers[0];
+                        status = RoundStatus.Finished;
 
-        //  Update the list of players
-        address[] newPlayerList;
+                        emit PlayerWon(boardAddress, id, winner, treasury.prize + treasury.entranceFee);
+                    }
 
-        for(address pl : roundPlayers[roundId]) {
-            if(pl != player) newPlayerList.push(pl);
+                    //  Fix the number of players in the storage
+                    maxPlayers--;
+                }
+
+                //  Void the player's entrance fee
+                if(remainingEntranceFees.exists(player)) delete remainingEntranceFees[player];
+
+                IBoard(boardAddress).onPlayerGiveUp{
+                    value: Gas.NOTIFY_BOARD_FEE,
+                    flag: MsgFlag.REMAINING_GAS,
+                    bounce: false
+                }(CallMetadata(id, player));
+
+                return;
+            }
         }
 
-        roundPlayers[roundId] = newPlayerList;
+        revert(BaseErrorCodes.ITEM_NOT_FOUND);
+    }
 
-        //  In case the only one player is left in the round, they become winner automatically
-        if(newPlayerList.length == 1) {
-            rounds[roundId].winner = newPlayerList[0];
-            rounds[roundId].status = RoundStatus.Finished;
-        }
-
-        //  Fix the number of players in the storage
-        rounds[roundId].maxPlayers--;
-
-        //  Check for jackpot payout
-        optional(RoundTreasury) rto = treasury.roundTreasury.fetch(roundId);
-        if(!rto.hasValue()) return;
-
-        RoundTreasury rt = rto.get();
-        if(!rt.playerJackpot.exists(player)) return;
-
-        //  Payout jackpot
-        uint128 jackpot = rt.playerJackpot[player];
-        if(jackpot > 0) {
-            player.transfer({value: jackpot, bounce: true});
-            emit JackpotClaimed(address(this), roundId, player, jackpot);
-        }
-
-        delete rt.playerJackpot[player];
+    function _notifyBoardAboutStatusChange(address player) internal view {
+        IBoard(boardAddress).onRoundStatusChange{
+                value: Gas.NOTIFY_BOARD_FEE,
+                bounce: false
+            }(
+            CallMetadata(id, player),
+            status
+        );
     }
 }

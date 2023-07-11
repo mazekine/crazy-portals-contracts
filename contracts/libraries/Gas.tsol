@@ -8,4 +8,5 @@ library Gas {
     uint128 constant TX_STORAGE_FEE         = 0.05 ever;
     uint128 constant JACKPOT_ACCRUAL_FEE    = 0.2 ever;
     uint128 constant JACKPOT_CALL_FEE       = 0.2 ever;
+    uint128 constant NOTIFY_BOARD_FEE       = 0.1 ever;
 }
