@@ -8,11 +8,10 @@ interface IRound is IGenericStructures {
     event RoundStatusUpdated(address indexed board, uint64 indexed roundId, RoundStatus oldStatus, RoundStatus newStatus);
     event RoundFinished(address board, uint64 roundId, address winner);
     event DiceRolled(address indexed board, uint64 indexed roundId, address indexed player, uint8 dice);
-    event PathFound(address player, Path path);
 
     //  Player events
     event RoundJoined(address board, uint64 roundId, address player);
-    event PlayerMoved(address indexed board, uint64 indexed round, address indexed player, uint48 path);
+    event PlayerMoved(address indexed board, uint64 indexed round, address indexed player, uint64 path);
     event PlayerWon(address board, uint64 round, address player, uint128 amount);
     event PlayerRemovedFromRound(address board, uint64 roundId, address player);
 

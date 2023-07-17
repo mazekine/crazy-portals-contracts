@@ -1,6 +1,7 @@
 import { WalletTypes } from "locklift";
 
 export default async () => {
+
     await locklift.deployments.deployAccounts([
             {
                 deploymentName: "Deployer", // user-defined custom account name

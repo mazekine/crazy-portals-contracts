@@ -5,7 +5,7 @@ import "./interfaces/round/IRound.tsol";
 import "./interfaces/board/IBoard.tsol";
 import "./libraries/Utils.tsol";
 import "./libraries/Gas.tsol";
-import "./libraries/Navigation.tsol";
+import "./abstracts/common/Navigation.tsol";
 import "@broxus/contracts/contracts/libraries/MsgFlag.tsol";
 import "./abstracts/board/RoundConfigurationStorage.tsol";
 import "./abstracts/board/BoardStorage.tsol";
@@ -13,7 +13,7 @@ import "./abstracts/common/Cashback.tsol";
 import "./interfaces/board/IJackpot.tsol";
 import "./libraries/ArrayHelper.tsol";
 
-contract Round is IRound, Cashback, BoardStorage {
+contract Round is IRound, Navigation, Cashback, BoardStorage {
     using ArrayHelper for address[];
 
     uint128 private constant MIN_PLAYERS = 2;                                //  Minimum number of players to attend the game
@@ -47,7 +47,7 @@ contract Round is IRound, Cashback, BoardStorage {
     //  Round metadata
     address[]                          roundPlayers;  // List of players in a round
     Move[] public                      roundMoves;    // Latest round move steps
-    mapping(address => uint8)          playerCell;    // Location of player on current map
+    mapping(address => uint16)         playerCell;    // Location of player on current map
     //mapping(uint8 => uint48)           cells;         // Contains location of portals on map
     mapping(address => uint128)        remainingEntranceFees;   //  Contains info about entrance fees per player for redeem case
 
@@ -81,10 +81,11 @@ contract Round is IRound, Cashback, BoardStorage {
         TvmCell constructorParams = dataSlices.loadRef();
 
         (
+            uint    _seed,
             Board   _boardSize,
-            uint48[] _redBeams,
-            uint48[] _blueBeams,
-            mapping(uint8 => uint48) _cells,
+            uint64[] _redBeams,
+            uint64[] _blueBeams,
+            mapping(uint16 => uint64) _cells,
             uint16  _maxPlayers,
             bool    _giveUpAllowed,
             uint64  _roundDuration,
@@ -96,12 +97,16 @@ contract Round is IRound, Cashback, BoardStorage {
             uint8   _rakeToJackpotRate
         ) = abi.decode(
             constructorParams,
-            (Board, uint48[], uint48[], mapping(uint8 => uint48), uint16, bool, uint64, uint64, optional(uint64), uint128, uint128, uint128, uint8)
+            (uint, Board, uint64[], uint64[], mapping(uint16 => uint64), uint16, bool, uint64, uint64, optional(uint64), uint128, uint128, uint128, uint8)
         );
 
+        seed = _seed;
         board = _boardSize;
         redBeams = _redBeams;
+        redBeamsNumber = uint8(_redBeams.length);
         blueBeams = _blueBeams;
+        blueBeamsNumber = uint8(_blueBeams.length);
+        boardInitialized = true;
         cells = _cells;
         maxPlayers = _maxPlayers;
         giveUpAllowed = _giveUpAllowed;
@@ -112,6 +117,7 @@ contract Round is IRound, Cashback, BoardStorage {
         }
         entranceFee = _entryStake;
         prizeFund = _prizeFund;
+        treasury.prize = prizeFund;
         rake = _rake;
         rakeToJackpotRate = _rakeToJackpotRate;
 
@@ -132,8 +138,14 @@ contract Round is IRound, Cashback, BoardStorage {
     function join(CallMetadata meta) external override {
         tvm.rawReserve(address(this).balance - msg.value + Gas.TX_STORAGE_FEE, 0);
 
-        Utils.requireWithCashback(msg.sender != boardAddress, meta.returnGasTo, BaseErrorCodes.NOT_ALLOWED);
-        Utils.requireWithCashback(roundPlayers.length < maxPlayers, meta.returnGasTo, BaseErrorCodes.NOT_ALLOWED);
+        //  Check that the id in metadata corresponds to this round
+        Utils.requireWithCashback(meta.callId == id, meta.returnGasTo, BaseErrorCodes.NOT_ALLOWED);
+
+        //  Only join through the board is supported
+        Utils.requireWithCashback(msg.sender == boardAddress, meta.returnGasTo, BaseErrorCodes.NOT_ALLOWED);
+
+        //  Check that round is not full yet
+        Utils.requireWithCashback(roundPlayers.length < maxPlayers, meta.returnGasTo, BaseErrorCodes.ROUND_FULL);
 
         address player = meta.returnGasTo;
 
@@ -164,7 +176,7 @@ contract Round is IRound, Cashback, BoardStorage {
             value: 0,
             flag: MsgFlag.ALL_NOT_RESERVED,
             bounce: false
-        }(meta);
+        }(CallMetadata(id, player));   //  Explicitly replacing the player address in metadata to ensure the right recording
     }
 
     /**
@@ -207,10 +219,10 @@ contract Round is IRound, Cashback, BoardStorage {
         Move        move;
 
         //  Empty storage of players' steps to initialize a new move
-        mapping(address => uint48[]) playerSteps;
+        mapping(address => uint64[]) playerSteps;
 
         //  Steps of current player
-        uint48[]    steps;
+        uint64[]    steps;
 
         //  Current timestamp
         uint64      timestamp = Utils._getTimestamp();
@@ -245,30 +257,30 @@ contract Round is IRound, Cashback, BoardStorage {
         emit DiceRolled(boardAddress, id, player, diceVal);
 
         //  Calculate new coordinates
-        uint8   curCell = playerCell[player];   //  Current cell the player stands on
-        (uint8 x, uint8 y) = Navigation.getXY(curCell, board.columns);
-        uint24  prevLocation = Navigation.encodeLocation(curCell, x, y);
+        uint16  curCell = playerCell[player];   //  Current cell the player stands on
+        (uint8 x, uint8 y) = getXY(curCell, board.columns);
+        uint32  prevLocation = encodeLocation(curCell, x, y);
 
-        uint8   newCell = curCell + diceVal;    //  The first cell the player moves to
-        (x, y) = Navigation.getXY(newCell, board.columns);
-        uint24 newLocation = Navigation.encodeLocation(newCell, x, y);
+        uint16  newCell = curCell + diceVal;    //  The first cell the player moves to
+        (x, y) = getXY(newCell, board.columns);
+        uint32 newLocation = encodeLocation(newCell, x, y);
 
         //  If the player is at the end of the board and got more points than needed, return him back by amount of an overflow
-        int8    boardOverflow = int8(board.columns) * int8(board.rows) - int8(newCell);
+        int16    boardOverflow = int16(board.columns) * int16(board.rows) - int16(newCell);
 
         //  Current player step
-        uint48  step;
+        uint64  step;
 
         if(boardOverflow < 0) {             //  The player has come out of the board
             //  Calculate location of the last cell
-            uint24 lastCellLocation = Navigation.encodeLocation(
+            uint32 lastCellLocation = encodeLocation(
                 board.columns * board.rows,
                 board.columns,
                 board.rows
             );
 
             //  Build path to this location
-            step = Navigation.encodePathByLocations(prevLocation, lastCellLocation);
+            step = encodePathByLocations(prevLocation, lastCellLocation);
 
             //  Player first moves to the last cell to step back later
             emit PlayerMoved(
@@ -282,11 +294,11 @@ contract Round is IRound, Cashback, BoardStorage {
             move.playerSteps[player].push(step);
 
             //  Calculate the next cell the player will move to
-            newCell = uint8(int8(board.columns * board.rows) + boardOverflow);
-            (x, y) = Navigation.getXY(newCell, board.columns);
+            newCell = uint16(int16(board.columns) * int16(board.rows) + boardOverflow);
+            (x, y) = getXY(newCell, board.columns);
 
             //  Recalculate locations
-            newLocation = Navigation.encodeLocation(newCell, x, y); //Location(newCell, _getCoordinate(newCell));
+            newLocation = encodeLocation(newCell, x, y);
             prevLocation = lastCellLocation;
 
         } else if (boardOverflow == 0) {    //  The player has got to the final cell
@@ -295,7 +307,7 @@ contract Round is IRound, Cashback, BoardStorage {
             _notifyBoardAboutStatusChange(player);
 
             winner = player;
-            step = Navigation.encodePathByLocations(prevLocation, newLocation);
+            step = encodePathByLocations(prevLocation, newLocation);
 
             emit PlayerMoved(
                 address(this),
@@ -316,7 +328,7 @@ contract Round is IRound, Cashback, BoardStorage {
             //  TODO: Remember what I wanted to put here
         }
 
-        step = Navigation.encodePathByLocations(prevLocation, newLocation);
+        step = encodePathByLocations(prevLocation, newLocation);
 
         emit PlayerMoved(address(this), id, player, step);
         move.playerSteps[player].push(step);
@@ -326,23 +338,23 @@ contract Round is IRound, Cashback, BoardStorage {
         //  Consider only one portal teleportation is possible
         //  Suppose no portal can end on the last cell
         if(cells.exists(newCell)) {
-            uint48 path = cells[newCell];
+            uint64 path = cells[newCell];
 
             (
                 ,
                 uint8 fromX,
                 uint8 fromY,
-                uint8 toCell,
+                uint16 toCell,
                 uint8 toX,
                 uint8 toY
-            ) = Navigation.decodePath(path);
+            ) = decodePath(path);
 
             if(fromX == x && fromY == y) {
                 prevLocation = newLocation;
                 newCell = toCell;
-                newLocation = Navigation.encodeLocation(newCell, toX, toY); //Location(_getCell(path.to.x, path.to.y), Coordinate(path.to.x, path.to.y));
+                newLocation = encodeLocation(newCell, toX, toY);
 
-                step = Navigation.encodePathByLocations(prevLocation, newLocation);
+                step = encodePathByLocations(prevLocation, newLocation);
                 move.playerSteps[player].push(step);
                 playerCell[player] = newCell;
 
@@ -354,41 +366,6 @@ contract Round is IRound, Cashback, BoardStorage {
         }
 
         roundMoves[roundMoves.length - 1] = move;
-
-/*
-        if(rake > 0 && rakeToJackpotRate > 0) {
-            //  Register step interval for adaptive jackpot
-            registerStepInterval(Utils._getTimestamp());
-
-            //  Draw jackpot
-            if(drawJackpot(roundId)) {
-                uint128 jackpot = boardTreasury.jackpot;
-                if(jackpot > 0) {
-                    //  Reset the accumulated jackpot
-                    boardTreasury.jackpot = 0;
-
-                    //  Add round treasury if it doesn't exist yet
-                    if(!boardTreasury.roundTreasury.exists(roundId)){
-                        boardTreasury.roundTreasury[roundId] = RoundTreasury({
-                            entranceFee: 0,
-                            prize: 0,
-                            playerJackpot: emptyMap
-                        });
-                    }
-
-                    //  Add player jackpot accrual if it doesn't exist yet
-                    if(!boardTreasury.roundTreasury[roundId].playerJackpot.exists(player)) {
-                        boardTreasury.roundTreasury[roundId].playerJackpot[player] = 0;
-                    }
-
-                    //  Increase player's jackpot
-                    boardTreasury.roundTreasury[roundId].playerJackpot[player] += jackpot;
-
-                    emit JackpotDrawn(address(this), roundId, player, jackpot);
-                }
-            }
-        }
-*/
 
         msg.sender.transfer({value: 0, flag: MsgFlag.ALL_NOT_RESERVED, bounce: false});
     }
@@ -450,6 +427,12 @@ contract Round is IRound, Cashback, BoardStorage {
         //  Check if round has expired
         if(validUntil > 0 && validUntil <= timestamp) {
             status = RoundStatus.Expired;
+
+            if(address(this).balance > prizeFund) {
+                //  Redeem back the prize fund to the board contract
+                boardAddress.transfer({value: prizeFund, bounce: false});
+            }
+
             _notifyBoardAboutStatusChange(returnGasTo);
 
             tvm.commit();
@@ -495,8 +478,8 @@ contract Round is IRound, Cashback, BoardStorage {
         }
 
         if(status == RoundStatus.Active) {
-            uint8 lastCell = board.columns * board.rows;
-            for((, uint8 pCell) : playerCell) {
+            uint16 lastCell = uint16(board.columns) * uint16(board.rows);
+            for((, uint16 pCell) : playerCell) {
                 if(pCell == lastCell) {
                     status = RoundStatus.Finished;
                     _notifyBoardAboutStatusChange(returnGasTo);

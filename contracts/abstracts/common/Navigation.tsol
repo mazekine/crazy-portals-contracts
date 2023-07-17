@@ -1,0 +1,111 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+pragma ever-solidity >= 0.66.0;
+
+import "../../interfaces/common/IGenericStructures.tsol";
+
+abstract contract Navigation is IGenericStructures {
+
+    function getCell(uint8 x, uint8 y, uint8 size) public pure returns (uint16 cell) {
+        bool rtl = (y % 2 == 0);
+        if (rtl) x = size - x + 1;
+        return uint16((y - 1) * size + x);
+    }
+
+    function getCoordinate(uint16 cell, uint8 size) public pure returns (Coordinate) {
+        (uint8 x, uint8 y) = getXY(cell, size);
+        return Coordinate(x, y);
+    }
+
+    function getXY(uint16 cell, uint8 size) public pure returns (uint8 _x, uint8 _y) {
+        if(cell == 0) return (0, 0);
+
+        uint8 y = uint8((cell - 1) / size + 1);
+        uint8 x = uint8(cell - (y - 1) * size);
+
+        bool rtl = (y % 2 == 0);
+        if (rtl) {
+            x = size - x + 1;
+        }
+
+        return (x, y);
+    }
+
+    function encodeLocation(uint16 cell, uint8 x, uint8 y) public pure returns (uint32) {
+        uint32 encodedMask = 0;
+
+        encodedMask |= uint32(cell) << 16;
+        encodedMask |= uint32(x)    << 8;
+        encodedMask |= uint32(y);
+
+        return encodedMask;
+    }
+
+    function decodeLocation(uint32 mask) public pure returns (uint16 cell, uint8 x, uint8 y) {
+        uint8 filter8 = 0xFF;
+
+        return (
+            uint16(mask >> 16),
+            uint8((mask >> 8) & filter8),
+            uint8(mask & filter8)
+        );
+    }
+
+    function decodePath(uint64 mask) public pure returns (
+        uint16 fromCell,
+        uint8 fromX,
+        uint8 fromY,
+        uint16 toCell,
+        uint8 toX,
+        uint8 toY
+    ) {
+        uint8 filter8 = 0xFF;
+        uint16 filter16 = 0xFFFF;
+
+        return (
+            uint16(mask >> 48),
+            uint8((mask >> 40) & filter8),
+            uint8((mask >> 32) & filter8),
+            uint16((mask >> 16) & filter16),
+            uint8((mask >> 8)  & filter8),
+            uint8(mask & filter8)
+        );
+    }
+
+    function encodePath(
+        uint16 fromCell,
+        uint8 fromX,
+        uint8 fromY,
+        uint16 toCell,
+        uint8 toX,
+        uint8 toY
+    ) public pure returns (uint64 mask) {
+        uint64 encodedMask = 0;
+
+        encodedMask |= uint64(fromCell) << 48;
+        encodedMask |= uint64(fromX)    << 40;
+        encodedMask |= uint64(fromY)    << 32;
+        encodedMask |= uint64(toCell)   << 16;
+        encodedMask |= uint64(toX)      << 8;
+        encodedMask |= uint64(toY);
+
+        return encodedMask;
+    }
+
+    function encodePathByLocations(uint32 from, uint32 to) public pure returns (uint64 mask) {
+        return ((uint64(from) << 32) | uint64(to));
+    }
+
+    function decodePathToLocations(uint64 mask) public pure returns (uint32 from, uint32 to) {
+        uint32 filter32 = 0xFFFFFFFF;
+
+        return (
+            uint32(mask >> 32),
+            uint32(mask & filter32)
+        );
+    }
+
+    function getPortalType(uint64 mask) public pure returns (PathType) {
+        (uint16 fromCell,,, uint16 toCell,,) = decodePath(mask);
+        return (fromCell > toCell) ? PathType.RedBeam : PathType.BlueBeam;
+    }
+}

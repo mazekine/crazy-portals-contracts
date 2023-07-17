@@ -63,6 +63,7 @@ library BaseErrorCodes {
     uint16 constant PLAYER_NOT_FOUND_IN_ROUND                       = 7051;
     uint16 constant PLAYER_NOT_FOUND_ON_BOARD                       = 7052;
     uint16 constant NOT_ALL_PLAYERS_JOINED                          = 7053;
+    uint16 constant ROUND_FULL                                      = 7054;
 
     //  Payment errors
     uint16 constant TOKEN_PAYMENT_EXPECTED                          = 8000;

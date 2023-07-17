@@ -7,7 +7,9 @@
 			"name": "constructor",
 			"inputs": [
 				{"name":"owner","type":"address"},
-				{"name":"size","type":"uint8"}
+				{"name":"size","type":"uint8"},
+				{"name":"_platformCode","type":"cell"},
+				{"name":"_roundCode","type":"cell"}
 			],
 			"outputs": [
 			]
@@ -72,8 +74,8 @@
 			],
 			"outputs": [
 				{"components":[{"name":"columns","type":"uint8"},{"name":"rows","type":"uint8"}],"name":"_board","type":"tuple"},
-				{"name":"_redBeams","type":"uint48[]"},
-				{"name":"_blueBeams","type":"uint48[]"}
+				{"name":"_redBeams","type":"uint64[]"},
+				{"name":"_blueBeams","type":"uint64[]"}
 			]
 		},
 		{
@@ -100,6 +102,22 @@
 			],
 			"outputs": [
 				{"name":"value0","type":"address"}
+			]
+		},
+		{
+			"name": "setPlatformCode",
+			"inputs": [
+				{"name":"code","type":"cell"}
+			],
+			"outputs": [
+			]
+		},
+		{
+			"name": "setRoundCode",
+			"inputs": [
+				{"name":"code","type":"cell"}
+			],
+			"outputs": [
 			]
 		},
 		{
@@ -225,6 +243,117 @@
 			]
 		},
 		{
+			"name": "getCell",
+			"inputs": [
+				{"name":"x","type":"uint8"},
+				{"name":"y","type":"uint8"},
+				{"name":"size","type":"uint8"}
+			],
+			"outputs": [
+				{"name":"cell","type":"uint16"}
+			]
+		},
+		{
+			"name": "getCoordinate",
+			"inputs": [
+				{"name":"cell","type":"uint16"},
+				{"name":"size","type":"uint8"}
+			],
+			"outputs": [
+				{"components":[{"name":"x","type":"uint8"},{"name":"y","type":"uint8"}],"name":"value0","type":"tuple"}
+			]
+		},
+		{
+			"name": "getXY",
+			"inputs": [
+				{"name":"cell","type":"uint16"},
+				{"name":"size","type":"uint8"}
+			],
+			"outputs": [
+				{"name":"_x","type":"uint8"},
+				{"name":"_y","type":"uint8"}
+			]
+		},
+		{
+			"name": "encodeLocation",
+			"inputs": [
+				{"name":"cell","type":"uint16"},
+				{"name":"x","type":"uint8"},
+				{"name":"y","type":"uint8"}
+			],
+			"outputs": [
+				{"name":"value0","type":"uint32"}
+			]
+		},
+		{
+			"name": "decodeLocation",
+			"inputs": [
+				{"name":"mask","type":"uint32"}
+			],
+			"outputs": [
+				{"name":"cell","type":"uint16"},
+				{"name":"x","type":"uint8"},
+				{"name":"y","type":"uint8"}
+			]
+		},
+		{
+			"name": "decodePath",
+			"inputs": [
+				{"name":"mask","type":"uint64"}
+			],
+			"outputs": [
+				{"name":"fromCell","type":"uint16"},
+				{"name":"fromX","type":"uint8"},
+				{"name":"fromY","type":"uint8"},
+				{"name":"toCell","type":"uint16"},
+				{"name":"toX","type":"uint8"},
+				{"name":"toY","type":"uint8"}
+			]
+		},
+		{
+			"name": "encodePath",
+			"inputs": [
+				{"name":"fromCell","type":"uint16"},
+				{"name":"fromX","type":"uint8"},
+				{"name":"fromY","type":"uint8"},
+				{"name":"toCell","type":"uint16"},
+				{"name":"toX","type":"uint8"},
+				{"name":"toY","type":"uint8"}
+			],
+			"outputs": [
+				{"name":"mask","type":"uint64"}
+			]
+		},
+		{
+			"name": "encodePathByLocations",
+			"inputs": [
+				{"name":"from","type":"uint32"},
+				{"name":"to","type":"uint32"}
+			],
+			"outputs": [
+				{"name":"mask","type":"uint64"}
+			]
+		},
+		{
+			"name": "decodePathToLocations",
+			"inputs": [
+				{"name":"mask","type":"uint64"}
+			],
+			"outputs": [
+				{"name":"from","type":"uint32"},
+				{"name":"to","type":"uint32"}
+			]
+		},
+		{
+			"name": "getPortalType",
+			"inputs": [
+				{"name":"mask","type":"uint64"}
+			],
+			"outputs": [
+				{"name":"value0","type":"uint8"}
+			]
+		},
+		{
 			"name": "owner",
 			"inputs": [
 				{"name":"answerId","type":"uint32"}
@@ -261,7 +390,7 @@
 			"inputs": [
 			],
 			"outputs": [
-				{"name":"blueBeamsNumber","type":"uint16"}
+				{"name":"blueBeamsNumber","type":"uint8"}
 			]
 		},
 		{
@@ -269,7 +398,7 @@
 			"inputs": [
 			],
 			"outputs": [
-				{"name":"redBeamsNumber","type":"uint16"}
+				{"name":"redBeamsNumber","type":"uint8"}
 			]
 		},
 		{
@@ -442,9 +571,7 @@
 		}
 	],
 	"data": [
-		{"key":1,"name":"platformCode","type":"cell"},
-		{"key":2,"name":"roundCode","type":"cell"},
-		{"key":3,"name":"nonce","type":"uint64"}
+		{"key":1,"name":"nonce","type":"uint64"}
 	],
 	"events": [
 		{
@@ -620,11 +747,31 @@
 			]
 		},
 		{
+			"name": "PlatformCodeUpgraded",
+			"inputs": [
+				{"name":"board","type":"address"},
+				{"name":"oldCode","type":"cell"},
+				{"name":"newCode","type":"cell"}
+			],
+			"outputs": [
+			]
+		},
+		{
+			"name": "RoundCodeUpgraded",
+			"inputs": [
+				{"name":"board","type":"address"},
+				{"name":"oldCode","type":"cell"},
+				{"name":"newCode","type":"cell"}
+			],
+			"outputs": [
+			]
+		},
+		{
 			"name": "BoardGenerated",
 			"inputs": [
 				{"components":[{"name":"columns","type":"uint8"},{"name":"rows","type":"uint8"}],"name":"board","type":"tuple"},
-				{"name":"redBeams","type":"uint48[]"},
-				{"name":"blueBeams","type":"uint48[]"}
+				{"name":"redBeams","type":"uint64[]"},
+				{"name":"blueBeams","type":"uint64[]"}
 			],
 			"outputs": [
 			]
@@ -646,13 +793,13 @@
 		{"name":"_owner","type":"address"},
 		{"name":"_initialized","type":"bool"},
 		{"name":"seed","type":"uint256"},
-		{"name":"blueBeamsNumber","type":"uint16"},
-		{"name":"redBeamsNumber","type":"uint16"},
+		{"name":"blueBeamsNumber","type":"uint8"},
+		{"name":"redBeamsNumber","type":"uint8"},
 		{"name":"boardInitialized","type":"bool"},
 		{"components":[{"name":"columns","type":"uint8"},{"name":"rows","type":"uint8"}],"name":"board","type":"tuple"},
-		{"name":"redBeams","type":"uint48[]"},
-		{"name":"blueBeams","type":"uint48[]"},
-		{"name":"cells","type":"map(uint8,uint48)"},
+		{"name":"redBeams","type":"uint64[]"},
+		{"name":"blueBeams","type":"uint64[]"},
+		{"name":"cells","type":"map(uint16,uint64)"},
 		{"components":[{"name":"rakes","type":"uint128"},{"name":"jackpot","type":"uint128"},{"name":"playerJackpot","type":"map(address,uint128)"}],"name":"treasury","type":"tuple"},
 		{"name":"jackpotAveragedPeriods","type":"uint16"},
 		{"name":"jackpotProbabilityFreezePeriod","type":"uint64"},

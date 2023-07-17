@@ -7,5 +7,11 @@ interface IRoundFactory is IGenericStructures {
     function createRound() external /*responsible returns (Round round)*/;
     function getRounds(optional(RoundStatus) status) external view responsible returns (uint64[] rounds);
 
+    function setPlatformCode(TvmCell code) external;
+    function setRoundCode(TvmCell code) external;
+
     event RoundCreated(address board, uint64 roundId, address roundAddress);
+
+    event PlatformCodeUpgraded(address board, TvmCell oldCode, TvmCell newCode);
+    event RoundCodeUpgraded(address board, TvmCell oldCode, TvmCell newCode);
 }

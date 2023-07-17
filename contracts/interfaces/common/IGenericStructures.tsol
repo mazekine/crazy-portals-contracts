@@ -6,34 +6,6 @@ interface IGenericStructures {
         NotStarted, Ready, Active, Finished, Expired
     }
 
-    /**
-        Round information container
-    */
-    struct RoundMetadata {
-        //  Basic information
-        uint64              id;
-        RoundStatus         status;
-        address             winner;
-        address             board;
-
-        //  General settings
-        uint16              maxPlayers;
-        bool                giveUpAllowed;
-
-        //  Timings
-        uint64              validUntil;
-        uint64              roundDuration;
-        uint64              moveDuration;
-        optional(uint64)    autoStartTimestamp;
-
-        //  Treasury
-        uint128             entryStake;
-        uint128             prizeFund;
-        bool                prizeClaimed;
-        uint128             rake;
-        uint8               rakeToJackpotRate;
-    }
-
     struct Coordinate {
         uint8 x;
         uint8 y;
@@ -43,12 +15,6 @@ interface IGenericStructures {
         RedBeam, BlueBeam
     }
 
-    struct Path {
-        Coordinate from;
-        Coordinate to;
-        PathType   type_;
-    }
-
     struct Board {
         uint8 columns;
         uint8 rows;
@@ -56,20 +22,8 @@ interface IGenericStructures {
 
     struct Move {
         uint64    expiresAt;
-        mapping(address => uint48[]) playerSteps;
+        mapping(address => uint64[]) playerSteps;
     }
-
-    struct Location {
-        uint8       cell;
-        Coordinate  coordinate;
-    }
-
-/*
-    struct Step {
-        Location from;
-        Location to;
-    }
-*/
 
     struct RoundTreasury {
         uint128 prize;
@@ -80,7 +34,6 @@ interface IGenericStructures {
         uint128 rakes;
         uint128 jackpot;
         mapping(address => uint128) playerJackpot;
-        //mapping(uint64 => RoundTreasury) roundTreasury;
     }
 
     struct CallMetadata {

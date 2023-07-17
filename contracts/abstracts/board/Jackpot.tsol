@@ -5,6 +5,7 @@ import "../../interfaces/board/IJackpot.tsol";
 import "../common/Cashback.tsol";
 import "../common/Ownable.tsol";
 import "../../libraries/ArrayHelper.tsol";
+import "../../libraries/Gas.tsol";
 import "./BoardTreasuryStorage.tsol";
 import "./BoardStorage.tsol";
 
@@ -156,6 +157,7 @@ abstract contract Jackpot is Ownable, Cashback, BoardStorage, IJackpot, BoardTre
     }
 
     function onJackpotAccrued(CallMetadata meta, uint128 rake, uint8 jackpotRate) external override {
+        tvm.rawReserve(msg.value - Gas.TX_STORAGE_FEE - rake, 0);
         _registerStepInterval(Utils._getTimestamp());
 
         uint128 jackpotAccrual = math.muldiv(rake, jackpotRate, 100);
@@ -170,6 +172,8 @@ abstract contract Jackpot is Ownable, Cashback, BoardStorage, IJackpot, BoardTre
             treasury.playerJackpot[meta.returnGasTo] += treasury.jackpot;
             treasury.jackpot = 0;
         }
+
+        meta.returnGasTo.transfer({value: 0, flag: MsgFlag.ALL_NOT_RESERVED, bounce: false});
     }
 
     /**

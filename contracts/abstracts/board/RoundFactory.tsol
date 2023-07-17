@@ -10,22 +10,28 @@ import "./RoundConfiguration.tsol";
 import "../../Platform.tsol";
 
 abstract contract RoundFactory is IRoundFactory, RoundConfiguration {
-    TvmCell         static platformCode;
-    TvmCell         static roundCode;
+    TvmCell         /*static*/ platformCode;
+    TvmCell         /*static*/ roundCode;
 
     uint64[]                        public rounds;
     mapping(uint64 => RoundStatus)  public roundStatuses;
 
     constructor() public {}
 
+    function _initRoundFactory(TvmCell _platformCode, TvmCell _roundCode) internal {
+        platformCode = _platformCode;
+        roundCode = _roundCode;
+    }
+
     /**
         Creates new round
     */
-    function createRound() external override reservable cashback {
+    function createRound() external override {
         require(boardInitialized, BaseErrorCodes.TOO_EARLY);
+        require(address(this).balance > (prizeFundPerRound + Gas.CONTRACT_MIN_BALANCE + Gas.DEPLOY_ACCOUNT_FEE), BaseErrorCodes.NOT_ENOUGH_BALANCE);
 
         uint64 roundId = Utils._getTimestamp();
-        for(uint64 r : rounds) {
+        for (uint64 r : rounds) {
             require(roundId != r, BaseErrorCodes.ITEM_EXISTS);
         }
 
@@ -33,12 +39,14 @@ abstract contract RoundFactory is IRoundFactory, RoundConfiguration {
         rounds.push(roundId);
         roundStatuses[roundId] = RoundStatus.NotStarted;
 
-        emit RoundCreated(address(this), roundId, newRound);
+        tvm.accept();
+        newRound.transfer({value: prizeFundPerRound, flag: MsgFlag.SENDER_PAYS_FEES, bounce: false});
 
+        emit RoundCreated(address(this), roundId, newRound);
         msg.sender.transfer({value: 0, flag: MsgFlag.REMAINING_GAS, bounce: false});
     }
 
-    function getRoundAddress(uint64 roundId) public view returns(address) {
+    function getRoundAddress(uint64 roundId) public view returns (address) {
         return address(
             tvm.hash(
                 _buildRoundInitialData(roundId)
@@ -47,21 +55,23 @@ abstract contract RoundFactory is IRoundFactory, RoundConfiguration {
     }
 
     function _deployRound(uint64 roundId) internal view returns (address) {
-        return new CPlatform {
+        return new CPlatform{
                 stateInit: _buildRoundInitialData(roundId),
                 value: Gas.DEPLOY_ACCOUNT_FEE
             }(
-                roundCode,
-                _buildRoundConstructorParams(),
-                msg.sender
-            );
+            roundCode,
+            _buildRoundConstructorParams(),
+            msg.sender
+        );
     }
 
     function _buildRoundConstructorParams() internal view returns (TvmCell) {
         return abi.encode(
+            seed,
             board,
             redBeams,
             blueBeams,
+            cells,
             maxPlayers,
             giveUpAllowed,
             maxRoundDurationSec,
@@ -76,16 +86,29 @@ abstract contract RoundFactory is IRoundFactory, RoundConfiguration {
 
     function _buildRoundInitialData(uint64 roundId) internal view returns (TvmCell) {
         return tvm.buildStateInit({
-            contr: Platform,
+            contr: CPlatform,
             varInit: {
-                root: address(this),
-                platformType: 0,
-                initialData: abi.encode(roundId),
-                platformCode: platformCode
-            },
+            root: address(this),
+            platformType: 0,
+            initialData: abi.encode(roundId),
+            platformCode: platformCode
+        },
             pubkey: 0,
             code: platformCode
         });
     }
 
+    function setPlatformCode(TvmCell code) external override reservable cashback {
+        TvmCell oldCode = platformCode;
+        platformCode = code;
+
+        emit PlatformCodeUpgraded(address(this), oldCode, platformCode);
+    }
+
+    function setRoundCode(TvmCell code) external override reservable cashback {
+        TvmCell oldCode = roundCode;
+        roundCode = code;
+
+        emit RoundCodeUpgraded(address(this), oldCode, roundCode);
+    }
 }
