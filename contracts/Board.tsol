@@ -62,13 +62,13 @@ contract Board is IBoard, Navigation, Jackpot, RoundFactory/*, Tracing*/ {
 
         for (uint8 i = 0; i < redBeamsNumber; i++) {
             uint64 redBeam = _getAddPath(PathType.RedBeam);
-            traceUint("redBeam", redBeam, 64, 64, "generateBoard()");
+            //traceUint("redBeam", redBeam, 64, 64, "generateBoard()");
             redBeams.push(redBeam);
         }
 
         for (uint8 i = 0; i < blueBeamsNumber; i++) {
             uint64 blueBeam = _getAddPath(PathType.BlueBeam);
-            traceUint("blueBeam", blueBeam, 64, 64, "generateBoard()");
+            //traceUint("blueBeam", blueBeam, 64, 64, "generateBoard()");
             blueBeams.push(blueBeam);
         }
 
@@ -358,7 +358,7 @@ contract Board is IBoard, Navigation, Jackpot, RoundFactory/*, Tracing*/ {
             );
         }
 
-        traceUint("result", result, 64, 341, "_getAddPath");
+        //traceUint("result", result, 64, 341, "_getAddPath");
 
         cells[headCell] = result;
         cells[tailCell] = result;
