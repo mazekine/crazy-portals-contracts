@@ -89,6 +89,14 @@
 			]
 		},
 		{
+			"name": "setDebugMode",
+			"inputs": [
+				{"name":"status","type":"bool"}
+			],
+			"outputs": [
+			]
+		},
+		{
 			"name": "createRound",
 			"inputs": [
 			],
@@ -546,6 +554,30 @@
 			]
 		},
 		{
+			"name": "debug",
+			"inputs": [
+			],
+			"outputs": [
+				{"name":"debug","type":"bool"}
+			]
+		},
+		{
+			"name": "uintDump",
+			"inputs": [
+			],
+			"outputs": [
+				{"components":[{"name":"name","type":"string"},{"name":"value","type":"uint256"},{"name":"_type","type":"uint16"},{"name":"line","type":"uint256"},{"name":"note","type":"string"}],"name":"uintDump","type":"map(uint256,tuple)"}
+			]
+		},
+		{
+			"name": "intDump",
+			"inputs": [
+			],
+			"outputs": [
+				{"components":[{"name":"name","type":"string"},{"name":"value","type":"int256"},{"name":"_type","type":"uint16"},{"name":"line","type":"uint256"},{"name":"note","type":"string"}],"name":"intDump","type":"map(uint256,tuple)"}
+			]
+		},
+		{
 			"name": "nonce",
 			"inputs": [
 			],
@@ -574,6 +606,40 @@
 		{"key":1,"name":"nonce","type":"uint64"}
 	],
 	"events": [
+		{
+			"name": "UintTraced",
+			"inputs": [
+				{"name":"name","type":"string"},
+				{"name":"value","type":"uint256"},
+				{"name":"_type","type":"uint16"},
+				{"name":"line","type":"uint256"},
+				{"name":"note","type":"string"}
+			],
+			"outputs": [
+			]
+		},
+		{
+			"name": "IntTraced",
+			"inputs": [
+				{"name":"name","type":"string"},
+				{"name":"value","type":"int256"},
+				{"name":"_type","type":"uint16"},
+				{"name":"line","type":"uint256"},
+				{"name":"note","type":"string"}
+			],
+			"outputs": [
+			]
+		},
+		{
+			"name": "DebugModeChanged",
+			"inputs": [
+				{"name":"_contract","type":"address"},
+				{"name":"prevState","type":"bool"},
+				{"name":"newState","type":"bool"}
+			],
+			"outputs": [
+			]
+		},
 		{
 			"name": "EntryStakeUpdated",
 			"inputs": [
@@ -809,7 +875,7 @@
 		{"name":"jackpotWinningNumber","type":"uint64"},
 		{"name":"jackpotFreezeProbabilityUntil","type":"uint64"},
 		{"name":"latestStepTimestamp","type":"uint64"},
-		{"name":"stepIntervals","type":"uint256[]"},
+		{"name":"stepIntervals","type":"uint64[]"},
 		{"name":"averageStepInterval","type":"uint64"},
 		{"name":"maxAverageInterval","type":"uint64"},
 		{"name":"maxRoundDurationSec","type":"uint64"},
@@ -825,6 +891,10 @@
 		{"name":"roundCode","type":"cell"},
 		{"name":"rounds","type":"uint64[]"},
 		{"name":"roundStatuses","type":"map(uint64,uint8)"},
+		{"name":"debug","type":"bool"},
+		{"components":[{"name":"name","type":"string"},{"name":"value","type":"uint256"},{"name":"_type","type":"uint16"},{"name":"line","type":"uint256"},{"name":"note","type":"string"}],"name":"uintDump","type":"map(uint256,tuple)"},
+		{"components":[{"name":"name","type":"string"},{"name":"value","type":"int256"},{"name":"_type","type":"uint16"},{"name":"line","type":"uint256"},{"name":"note","type":"string"}],"name":"intDump","type":"map(uint256,tuple)"},
+		{"name":"dumpNames","type":"string[]"},
 		{"name":"nonce","type":"uint64"},
 		{"name":"joinQueue","type":"map(address,uint64)"},
 		{"name":"playerRound","type":"map(address,uint64)"}

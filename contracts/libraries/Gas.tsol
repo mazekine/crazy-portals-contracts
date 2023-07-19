@@ -5,7 +5,7 @@ pragma ever-solidity >= 0.66.0;
 library Gas {
     uint128 constant DEPLOY_ACCOUNT_FEE     = 0.5 ever;
     uint128 constant CONTRACT_MIN_BALANCE   = 0.1 ever;
-    uint128 constant TX_STORAGE_FEE         = 0.05 ever;
+    uint128 constant TX_STORAGE_FEE         = 0.01 ever;
     uint128 constant JACKPOT_ACCRUAL_FEE    = 0.2 ever;
     uint128 constant JACKPOT_CALL_FEE       = 0.2 ever;
     uint128 constant NOTIFY_BOARD_FEE       = 0.1 ever;

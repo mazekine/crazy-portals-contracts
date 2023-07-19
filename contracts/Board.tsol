@@ -10,7 +10,7 @@ import "./interfaces/board/IBoard.tsol";
 import "./libraries/Gas.tsol";
 import "@broxus/contracts/contracts/libraries/MsgFlag.tsol";
 
-contract Board is IBoard, Navigation, Jackpot, RoundFactory {
+contract Board is IBoard, Navigation, Jackpot, RoundFactory/*, Tracing*/ {
     uint64                      public static nonce;
     mapping(address => uint64)  public        joinQueue;
     mapping(address => uint64)  public        playerRound;   // Active round for player.
@@ -62,11 +62,13 @@ contract Board is IBoard, Navigation, Jackpot, RoundFactory {
 
         for (uint8 i = 0; i < redBeamsNumber; i++) {
             uint64 redBeam = _getAddPath(PathType.RedBeam);
+            traceUint("redBeam", redBeam, 64, 64, "generateBoard()");
             redBeams.push(redBeam);
         }
 
         for (uint8 i = 0; i < blueBeamsNumber; i++) {
             uint64 blueBeam = _getAddPath(PathType.BlueBeam);
+            traceUint("blueBeam", blueBeam, 64, 64, "generateBoard()");
             blueBeams.push(blueBeam);
         }
 
@@ -300,9 +302,14 @@ contract Board is IBoard, Navigation, Jackpot, RoundFactory {
         bool flag;
         while (!flag) {
             head.x = rnd.next(board.columns) + 1;
+            //traceUint("head.x", head.x, 8, 304, "_getAddPath");
+
             head.y = rnd.next(board.rows - 1) + 2;
+            //traceUint("head.y", head.y, 8, 308, "_getAddPath");
+
             //  Head cannot happen on the first row
             headCell = getCell(head.x, head.y, board.columns);
+            //traceUint("headCell", headCell, 16, 312, "_getAddPath");
 
             flag = !(head.y == board.rows && head.x == 1) && //  Head cannot be on the final cell
             !cells.exists(headCell);
@@ -312,9 +319,15 @@ contract Board is IBoard, Navigation, Jackpot, RoundFactory {
         flag = false;
         while (!flag) {
             tail.x = rnd.next(board.columns) + 1;
+            //traceUint("tail.x", tail.x, 8, 322, "_getAddPath");
+
             tail.y = rnd.next(head.y - 2) + 1;
+            //traceUint("tail.y", tail.y, 8, 324, "_getAddPath");
+
             //  Tail must be lower than head
             tailCell = getCell(tail.x, tail.y, board.columns);
+            //traceUint("tailCell", tailCell, 16, 328, "_getAddPath");
+
             //_getCell(tail.x, tail.y);
             flag = !cells.exists(tailCell);
 
@@ -344,6 +357,8 @@ contract Board is IBoard, Navigation, Jackpot, RoundFactory {
                 head.y
             );
         }
+
+        traceUint("result", result, 64, 341, "_getAddPath");
 
         cells[headCell] = result;
         cells[tailCell] = result;

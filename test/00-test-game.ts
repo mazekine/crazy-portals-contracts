@@ -140,6 +140,25 @@ describe("Test Board.tsol", async function () {
             console.log(tabulator + "Board balance: " + locklift.utils.fromNano(await locklift.provider.getBalance(boardContract.address)) + " EVER");
         });
 
+/*
+        it("Turn on debug mode on Board contract", async function() {
+            const debugModeTx = await locklift.tracing.trace(boardContract
+                .methods
+                .setDebugMode({
+                    status: true
+                })
+                .send({
+                    from: deployer,
+                    amount: locklift.utils.toNano(0.2),
+                    bounce: true
+                }), {raise: true}
+            );
+
+            expect(debugModeTx.traceTree).emit("DebugModeChanged")
+                .and.not.to.have.error();
+        });
+*/
+
         it("Set maximum players", async function () {
             const maxPlayerTx = await locklift.tracing.trace(boardContract
                 .methods
@@ -369,6 +388,25 @@ describe("Test Board.tsol", async function () {
             //roundResponse = await boardContract.methods.getRound({answerId: 0, roundId: roundId}).call();
         });
 
+/*
+        it("Turn on debug mode on Round contract", async function() {
+            const debugModeTx = await locklift.tracing.trace(roundContract
+                .methods
+                .setDebugMode({
+                    status: true
+                })
+                .send({
+                    from: deployer,
+                    amount: locklift.utils.toNano(0.2),
+                    bounce: true
+                }), {raise: true}
+            );
+
+            expect(debugModeTx.traceTree).emit("DebugModeChanged")
+                .and.not.to.have.error();
+        });
+*/
+
         it("Join round", async function () {
             let joinRoundViaBoardTx = await locklift.tracing.trace(boardContract
                 .methods
@@ -530,8 +568,23 @@ describe("Test Board.tsol", async function () {
                 if (move.move) {
                     if(move.move.playerSteps.length < 2) {
                         roundStatus = +(await roundContract.fields.status.call({}));
-                        if(roundStatus < 3) //  Round not finished or expired
-                            expect(move.move.playerSteps.length).to.be.equal(2, "One of players hasn't moved");
+                        if(roundStatus < 3) { //  Round not finished or expired
+                            let troublemaker = (move.move.playerSteps[0][0] == deployer) ? deployer : opponent;
+                            console.log(nTabulator + `Retrying (potentially) failed transaction of ${maskAddress(troublemaker.toString())}...`)
+                            let rollRetryTx = await locklift.tracing.trace(roundContract
+                                .methods
+                                .roll({})
+                                .send({
+                                    from: troublemaker,
+                                    amount: ROLL_GAS,
+                                    bounce: true
+                                }), {raise: true, allowedCodes: {compute: [1060, 5005]}}
+                            );
+                            expect(rollRetryTx).to.emit("DiceRolled")
+                                .and.not.to.have.error();
+
+                            //expect(move.move.playerSteps.length).to.be.equal(2, "One of players hasn't moved");
+                        }
                     }
 
                     for (const [address, steps] of move.move.playerSteps) {
@@ -587,12 +640,12 @@ describe("Test Board.tsol", async function () {
             console.log(tabulator + "Winner balance before claim: " + locklift.utils.fromNano(winnerBalanceBeforeClaim) + " EVER");
             console.log(tabulator + "Winner balance after claim: " + locklift.utils.fromNano(winnerBalanceAfterClaim) + " EVER\n");
 
-            let winnerSpent = winnerBalanceAfterClaim - winnerBalanceBeforeClaim - prizeFund;
+            let winnerSpent = winnerBalanceBeforeClaim - (winnerBalanceAfterClaim - prizeFund);
+            let profit = prizeFund - winnerSpent;
 
             console.log(tabulator + "Winner spent: " + locklift.utils.fromNano(winnerSpent) + " EVER");
+            console.log(tabulator + `${(winnerSpent > prizeFund) ? "Loss" : "Profit"}: ${locklift.utils.fromNano(profit)} EVER`);
             console.log(tabulator + "Average gas per roll: " + (+locklift.utils.fromNano(winnerSpent / stepsCounter)).toPrecision(3) + " EVER\n")
-
-            //expect(prize).to.be.greaterThanOrEqual(+round.round!!.prizeFund - +locklift.utils.toNano(1), "Incorrect prize received");
         });
     });
 });

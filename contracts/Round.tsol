@@ -1,19 +1,20 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 pragma ever-solidity >= 0.66.0;
 
-import "./interfaces/round/IRound.tsol";
-import "./interfaces/board/IBoard.tsol";
-import "./libraries/Utils.tsol";
-import "./libraries/Gas.tsol";
-import "./abstracts/common/Navigation.tsol";
-import "@broxus/contracts/contracts/libraries/MsgFlag.tsol";
-import "./abstracts/board/RoundConfigurationStorage.tsol";
 import "./abstracts/board/BoardStorage.tsol";
+//import "./abstracts/board/RoundConfigurationStorage.tsol";
 import "./abstracts/common/Cashback.tsol";
+import "./abstracts/common/Navigation.tsol";
+import "./abstracts/common/Tracing.tsol";
+import "./interfaces/board/IBoard.tsol";
 import "./interfaces/board/IJackpot.tsol";
+import "./interfaces/round/IRound.tsol";
 import "./libraries/ArrayHelper.tsol";
+import "./libraries/Gas.tsol";
+import "./libraries/Utils.tsol";
+import "@broxus/contracts/contracts/libraries/MsgFlag.tsol";
 
-contract Round is IRound, Navigation, Cashback, BoardStorage {
+contract Round is IRound, Navigation, Cashback, BoardStorage/*, Tracing*/ {
     using ArrayHelper for address[];
 
     uint128 private constant MIN_PLAYERS = 2;                                //  Minimum number of players to attend the game
@@ -128,12 +129,6 @@ contract Round is IRound, Navigation, Cashback, BoardStorage {
         if(roundMoves.length == 0) return {value: 0, flag: MsgFlag.REMAINING_GAS, bounce: false} null;
         return {value: 0, flag: MsgFlag.REMAINING_GAS, bounce: false} (roundMoves[roundMoves.length - 1]);
     }
-
-/*
-    function getRound(uint64 roundId) external view responsible override returns (optional(Round) round) {
-        return {value: 0, flag: MsgFlag.REMAINING_GAS, bounce: false} rounds.fetch(roundId);
-    }
-*/
 
     function join(CallMetadata meta) external override {
         tvm.rawReserve(address(this).balance - msg.value + Gas.TX_STORAGE_FEE, 0);
@@ -262,16 +257,15 @@ contract Round is IRound, Navigation, Cashback, BoardStorage {
         uint32  prevLocation = encodeLocation(curCell, x, y);
 
         uint16  newCell = curCell + diceVal;    //  The first cell the player moves to
-        (x, y) = getXY(newCell, board.columns);
-        uint32 newLocation = encodeLocation(newCell, x, y);
+        uint32 newLocation;
 
         //  If the player is at the end of the board and got more points than needed, return him back by amount of an overflow
-        int16    boardOverflow = int16(board.columns) * int16(board.rows) - int16(newCell);
+        int16    boardOverflow = int16(newCell) - int16(board.columns) * int16(board.rows);
 
         //  Current player step
         uint64  step;
 
-        if(boardOverflow < 0) {             //  The player has come out of the board
+        if(boardOverflow > 0) {             //  The player has come out of the board
             //  Calculate location of the last cell
             uint32 lastCellLocation = encodeLocation(
                 board.columns * board.rows,
@@ -292,9 +286,11 @@ contract Round is IRound, Navigation, Cashback, BoardStorage {
 
             //  Save the first step
             move.playerSteps[player].push(step);
+            playerCell[player] = board.rows * board.columns;
 
             //  Calculate the next cell the player will move to
-            newCell = uint16(int16(board.columns) * int16(board.rows) + boardOverflow);
+            newCell = uint16(int16(board.columns) * int16(board.rows) - boardOverflow);
+
             (x, y) = getXY(newCell, board.columns);
 
             //  Recalculate locations
@@ -325,7 +321,9 @@ contract Round is IRound, Navigation, Cashback, BoardStorage {
 
             return;
         } else {
-            //  TODO: Remember what I wanted to put here
+            //  Regular move
+            (x, y) = getXY(newCell, board.columns);
+            newLocation = encodeLocation(newCell, x, y);
         }
 
         step = encodePathByLocations(prevLocation, newLocation);
@@ -351,10 +349,13 @@ contract Round is IRound, Navigation, Cashback, BoardStorage {
 
             if(fromX == x && fromY == y) {
                 prevLocation = newLocation;
+
                 newCell = toCell;
+
                 newLocation = encodeLocation(newCell, toX, toY);
 
                 step = encodePathByLocations(prevLocation, newLocation);
+
                 move.playerSteps[player].push(step);
                 playerCell[player] = newCell;
 

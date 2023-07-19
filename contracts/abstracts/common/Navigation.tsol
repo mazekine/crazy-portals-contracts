@@ -6,9 +6,13 @@ import "../../interfaces/common/IGenericStructures.tsol";
 abstract contract Navigation is IGenericStructures {
 
     function getCell(uint8 x, uint8 y, uint8 size) public pure returns (uint16 cell) {
-        bool rtl = (y % 2 == 0);
-        if (rtl) x = size - x + 1;
-        return uint16((y - 1) * size + x);
+        uint16 x16 = uint16(x);
+        uint16 y16 = uint16(y);
+        uint16 size16 = uint16(size);
+
+        bool rtl = (y16 % 2 == 0);
+        if (rtl) x16 = size16 - x16 + 1;
+        return (y16 - 1) * size16 + x16;
     }
 
     function getCoordinate(uint16 cell, uint8 size) public pure returns (Coordinate) {
@@ -20,7 +24,7 @@ abstract contract Navigation is IGenericStructures {
         if(cell == 0) return (0, 0);
 
         uint8 y = uint8((cell - 1) / size + 1);
-        uint8 x = uint8(cell - (y - 1) * size);
+        uint8 x = uint8(cell - (y - 1) * size); //  TODO: Test for extremes
 
         bool rtl = (y % 2 == 0);
         if (rtl) {

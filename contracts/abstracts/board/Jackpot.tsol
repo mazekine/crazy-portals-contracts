@@ -10,7 +10,7 @@ import "./BoardTreasuryStorage.tsol";
 import "./BoardStorage.tsol";
 
 abstract contract Jackpot is Ownable, Cashback, BoardStorage, IJackpot, BoardTreasuryStorage  {
-    using ArrayHelper for uint[];
+    using ArrayHelper for uint64[];
 
     uint16  constant AVERAGED_PERIODS_DEFAULT = 10;                 //  30 rolls
     uint64  constant PROBABILITY_FREEZE_PERIOD_DEFAULT = 60;        //  1 minute
@@ -26,7 +26,7 @@ abstract contract Jackpot is Ownable, Cashback, BoardStorage, IJackpot, BoardTre
     uint64         jackpotFreezeProbabilityUntil;
 
     uint64 latestStepTimestamp;
-    uint[] stepIntervals;
+    uint64[] stepIntervals;
     uint64 averageStepInterval;
     uint64 maxAverageInterval;
 
@@ -157,7 +157,8 @@ abstract contract Jackpot is Ownable, Cashback, BoardStorage, IJackpot, BoardTre
     }
 
     function onJackpotAccrued(CallMetadata meta, uint128 rake, uint8 jackpotRate) external override {
-        tvm.rawReserve(msg.value - Gas.TX_STORAGE_FEE - rake, 0);
+        //tvm.rawReserve(msg.value - Gas.TX_STORAGE_FEE - rake, 0);
+        tvm.rawReserve(Gas.TX_STORAGE_FEE + rake, 4);
         _registerStepInterval(Utils._getTimestamp());
 
         uint128 jackpotAccrual = math.muldiv(rake, jackpotRate, 100);
