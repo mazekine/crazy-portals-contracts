@@ -12,15 +12,15 @@
     "@types/mocha": "^10.0.1",
     "@types/node": "^18.15.11",
     "chai": "^4.3.7",
-    "everscale-standalone-client": "^2.1.18",
-    "locklift": "^2.5.7",
+    "locklift": "^2.7.4",
+    "nekoton-wasm": "npm:nekoton-wasm-locklift@^1.20.0",
     "prettier": "^2.8.7",
     "ts-mocha": "^10.0.0",
     "typescript": "^4.7.4"
   },
   "dependencies": {
     "@broxus/contracts": "^1.1.1",
-    "locklift-deploy": "^1.0.3",
-    "locklift-verifier": "^1.0.4"
+    "@broxus/locklift-deploy": "^1.1.1",
+    "@broxus/locklift-verifier": "^1.0.5"
   }
 }

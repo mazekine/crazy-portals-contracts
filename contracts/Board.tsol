@@ -25,7 +25,6 @@ contract Board is IBoard, Navigation, Jackpot, RoundFactory/*, Tracing*/ {
         TvmCell _platformCode,
         TvmCell _roundCode
     ) public {
-        //  TODO:   Update cell type to uint16 to avoid integer overflow
         require((size % 2 == 0) || (size >= 6) || (size <= 16), BaseErrorCodes.NOT_ALLOWED);
 
         tvm.accept();

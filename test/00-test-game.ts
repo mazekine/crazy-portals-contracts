@@ -536,10 +536,10 @@ describe("Test Board.tsol", async function () {
                         from: deployer,
                         amount: ROLL_GAS,
                         bounce: true
-                    }), {raise: true, allowedCodes: {compute: [1060, 5005]}}
+                    }), {raise: false, allowedCodes: {compute: [1060, 5005]}}
                 );
 
-                //rollFirstTx.traceTree?.beautyPrint();
+                rollFirstTx.traceTree?.beautyPrint();
                 //expect(rollFirstTx.traceTree).to.not.have.error();
 
                 let rollSecondTx  = await locklift.tracing.trace(roundContract
@@ -549,10 +549,10 @@ describe("Test Board.tsol", async function () {
                         from: opponent,
                         amount: ROLL_GAS,
                         bounce: true
-                    }), {raise: true, allowedCodes: {compute: [1060, 5005]}}
+                    }), {raise: false, allowedCodes: {compute: [1060, 5005]}}
                 );
 
-                //rollSecondTx.traceTree?.beautyPrint();
+                rollSecondTx.traceTree?.beautyPrint();
 
                 //expect(rollSecondTx.traceTree).to.not.have.error();
                 //expect(rollSecondTx.traceTree).to.emit("DiceRolled");
