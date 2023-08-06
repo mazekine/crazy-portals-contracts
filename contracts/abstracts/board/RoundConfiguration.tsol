@@ -1,0 +1,129 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+pragma ever-solidity >= 0.66.0;
+
+import "../board/BoardStorage.tsol";
+import "../../interfaces/round/IRoundConfiguration.tsol";
+import "../common/Ownable.tsol";
+import "../common/Cashback.tsol";
+import "./RoundConfigurationStorage.tsol";
+
+abstract contract RoundConfiguration is Ownable, Cashback, BoardStorage, IRoundConfiguration, RoundConfigurationStorage {
+
+    constructor() public {}
+
+    /**
+        Configures maximum number of players per round.
+
+        @dev    Affects only future rounds
+        @param  qty Number of players
+    */
+    function setMaxPlayers(uint16 qty) external override onlyOwner reservable cashback {
+        uint16 oldVal = maxPlayers;
+        maxPlayers = qty;
+
+        emit MaxPlayersUpdated(address(this), oldVal, maxPlayers);
+    }
+
+    /**
+        Configures round time in milliseconds.
+        The round will expire after the specified time passes since the start
+
+        @dev    Affects only future rounds
+        @param  sec  Time in seconds
+    */
+    function setMaxRoundTimeSec(uint64 sec) external override onlyOwner reservable cashback {
+        uint64 oldVal = maxRoundDurationSec;
+        maxRoundDurationSec = sec;
+
+        emit MaxRoundTimeSecUpdated(address(this), oldVal, maxRoundDurationSec);
+    }
+
+    /**
+        Configures move time in milliseconds.
+        Players can make only one step within a move, and this parameter indicates the move expiry interval
+
+        @dev    Affects only future rounds
+        @param  sec  Time in seconds
+    */
+    function setMaxMoveTimeSec(uint64 sec) external override onlyOwner reservable cashback {
+        uint64 oldVal = maxMoveDurationSec;
+        maxMoveDurationSec = sec;
+
+        emit MaxMoveTimeSecUpdated(address(this), oldVal, maxMoveDurationSec);
+    }
+
+    /**
+        Configures the prize fund for a round.
+
+        @dev    Affects only future rounds
+        @param  amount  Amount in nanoevers that can be claimed by the winner
+    */
+    function setPrizeFund(uint128 amount) external override onlyOwner reservable cashback {
+        uint128 oldVal = prizeFundPerRound;
+        prizeFundPerRound = amount;
+
+        emit PrizeFundUpdated(address(this), oldVal, prizeFundPerRound);
+    }
+
+    /**
+        Configures the entry stake paid by players during the round joining
+
+        @dev    Affects only future rounds
+        @param  amount  Amount in nanoevers that shall be paid by each participant before the round starts
+    */
+    function setEntryStake(uint128 amount) external override onlyOwner reservable cashback {
+        uint128 oldVal = entranceFee;
+        entranceFee = amount;
+
+        emit EntryStakeUpdated(address(this), oldVal, entranceFee);
+    }
+
+    /**
+        Sets the value of rake that will be paid to the board on each roll
+
+        @param  amount  Value of the rake
+    */
+    function setRake(uint128 amount) external override onlyOwner reservable cashback {
+        uint128 oldVal = rake;
+        rake = amount;
+
+        emit RakeUpdated(address(this), oldVal, rake);
+    }
+
+    /**
+        Sets how much of the rake will be directed to the jackpot fund (in percent).
+
+        @param  rate    Value between 0-100
+    */
+    function setJackpotRate(uint8 rate) external override onlyOwner reservable cashback {
+        require(rate >= 0 && rate <=100, BaseErrorCodes.WRONG_CONFIGURATION);
+
+        uint8 oldVal = jackpotRate;
+        jackpotRate = rate;
+
+        emit JackpotRateUpdated(address(this), oldVal, jackpotRate);
+    }
+
+    /**
+            Sets the period in milliseconds after the creation of the round after which it will start even if it hasn't obtained enough players
+        */
+    function setAutostartSec(optional(uint64) sec) external override onlyOwner reservable cashback {
+        optional(uint64) oldVal = roundAutostartSec;
+        roundAutostartSec = sec;
+
+        emit RoundAutostartSecUpdated(address(this), oldVal, roundAutostartSec);
+    }
+
+    /**
+        Turns on or off the possibility for a player to give up the round before its end
+
+        @param  allowed True to turn the opportunity on, false to switch it off
+    */
+    function setPlayerGiveUpAllowed(bool allowed) external override onlyOwner reservable cashback {
+        bool oldVal = giveUpAllowed;
+        giveUpAllowed = allowed;
+
+        emit PlayerGiveUpAllowedUpdated(address(this), oldVal, giveUpAllowed);
+    }
+
+}

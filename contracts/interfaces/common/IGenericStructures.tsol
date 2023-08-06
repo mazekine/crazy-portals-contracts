@@ -1,0 +1,43 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+pragma ever-solidity >= 0.66.0;
+
+interface IGenericStructures {
+    enum RoundStatus {
+        NotStarted, Ready, Active, Finished, Expired
+    }
+
+    struct Coordinate {
+        uint8 x;
+        uint8 y;
+    }
+
+    enum PathType {
+        RedBeam, BlueBeam
+    }
+
+    struct Board {
+        uint8 columns;
+        uint8 rows;
+    }
+
+    struct Move {
+        uint64    expiresAt;
+        mapping(address => uint64[]) playerSteps;
+    }
+
+    struct RoundTreasury {
+        uint128 prize;
+        uint128 entranceFee;
+    }
+
+    struct BoardTreasury {
+        uint128 rakes;
+        uint128 jackpot;
+        mapping(address => uint128) playerJackpot;
+    }
+
+    struct CallMetadata {
+        uint64  callId;
+        address returnGasTo;
+    }
+}

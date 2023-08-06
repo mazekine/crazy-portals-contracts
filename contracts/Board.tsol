@@ -1,0 +1,417 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+pragma ever-solidity >= 0.66.0;
+
+import "./abstracts/common/Cashback.tsol";
+import "./abstracts/board/Jackpot.tsol";
+import "./abstracts/common/Ownable.tsol";
+import "./Round.tsol";
+import "./abstracts/board/RoundFactory.tsol";
+import "./interfaces/board/IBoard.tsol";
+import "./libraries/Gas.tsol";
+import "@broxus/contracts/contracts/libraries/MsgFlag.tsol";
+
+contract Board is IBoard, Navigation, Jackpot, RoundFactory/*, Tracing*/ {
+    uint64                      public static nonce;
+    mapping(address => uint64)  public        joinQueue;
+    mapping(address => uint64)  public        playerRound;   // Active round for player.
+
+    /**
+        @param  owner   Default owner of the board
+        @param  size    Size of the board (must be an even number in range [6; 16])
+    */
+    constructor(
+        address owner,
+        uint8 size,
+        TvmCell _platformCode,
+        TvmCell _roundCode
+    ) public {
+        require((size % 2 == 0) || (size >= 6) || (size <= 16), BaseErrorCodes.NOT_ALLOWED);
+
+        tvm.accept();
+        board = Board(size, size);
+
+        _initOwnable(owner);
+        _initRoundFactory(_platformCode, _roundCode);
+    }
+
+    /**
+        Generates a new game board. Can be done only once per contract.
+
+        @param  _seed           Random salt to initiate randomizer
+        @param  _maxRedBeams    Maximum number of red portals
+        @param  _maxBlueBeams   Maximum number of blue portals
+    */
+    function generateBoard(uint _seed, uint8 _maxRedBeams, uint8 _maxBlueBeams)
+    external
+    override
+    onlyOwner
+    reservable
+    cashback
+    {
+        require(!boardInitialized, BaseErrorCodes.ITEM_EXISTS);
+        require(_maxRedBeams <= (board.rows - 2), BaseErrorCodes.VALUE_TOO_BIG);
+        require(_maxBlueBeams <= (board.rows - 2), BaseErrorCodes.VALUE_TOO_BIG);
+
+        redBeamsNumber = _maxRedBeams;
+        blueBeamsNumber = _maxBlueBeams;
+
+        seed = _seed;
+        rnd.setSeed(seed);
+        rnd.shuffle();
+
+        for (uint8 i = 0; i < redBeamsNumber; i++) {
+            uint64 redBeam = _getAddPath(PathType.RedBeam);
+            //traceUint("redBeam", redBeam, 64, 64, "generateBoard()");
+            redBeams.push(redBeam);
+        }
+
+        for (uint8 i = 0; i < blueBeamsNumber; i++) {
+            uint64 blueBeam = _getAddPath(PathType.BlueBeam);
+            //traceUint("blueBeam", blueBeam, 64, 64, "generateBoard()");
+            blueBeams.push(blueBeam);
+        }
+
+        boardInitialized = true;
+
+        emit BoardGenerated(board, redBeams, blueBeams);
+    }
+
+    /**
+        Joins the requesting player to the specified round
+
+        @param      roundId Round identifier
+    */
+    function joinRound(uint64 roundId) external override {
+        tvm.rawReserve(address(this).balance - msg.value + Gas.TX_STORAGE_FEE, 0);
+        //  Reserve all except message value less storage fee
+
+        bool roundExists = false;
+        for (uint64 r : rounds) {
+            if (r == roundId) {
+                roundExists = true;
+                break;
+            }
+        }
+        require(roundExists, BaseErrorCodes.ITEM_NOT_FOUND);
+
+        address player = msg.sender;
+        joinQueue[player] = roundId;
+
+        if (playerRound.exists(player)) {
+            //  Check that player is not joining the same round
+            require(playerRound[player] != roundId, BaseErrorCodes.NOTHING_CHANGED);
+
+            //  Check that that player is not participating in an active round already
+            address oldRoundAddress = getRoundAddress(playerRound[player]);
+            CallMetadata meta = CallMetadata(
+                roundId,
+                player
+            );
+
+            IRound(oldRoundAddress).getRoundStatus{
+                    value: 0,
+                    flag: MsgFlag.ALL_NOT_RESERVED,
+                    bounce: false,
+                    callback: onPlayerJoiningRound
+                }(meta);
+
+            return;
+        }
+
+        CallMetadata meta = CallMetadata(roundId, player);
+        address roundAddress = getRoundAddress(roundId);
+
+        IRound(roundAddress).join{value: 0, flag: MsgFlag.ALL_NOT_RESERVED, bounce: false}(meta);
+    }
+
+    /**
+        Callback method called by old round in case of player joining a new one
+
+        @param  oldRoundId  Identifier of the old round
+        @param  status      Round status
+    */
+    function onPlayerJoiningRound(uint64 oldRoundId, RoundStatus status, CallMetadata meta) public override {
+        tvm.rawReserve(address(this).balance - msg.value + Gas.TX_STORAGE_FEE, 0);
+
+        address player = meta.returnGasTo;
+
+        if (
+            !playerRound.exists(player) ||
+        playerRound[player] != oldRoundId ||
+        msg.sender != getRoundAddress(oldRoundId)
+        ) {
+            player.transfer({value: 0, flag: MsgFlag.ALL_NOT_RESERVED, bounce: false});
+            revert(BaseErrorCodes.ITEM_NOT_FOUND);
+        }
+
+        //  Check that
+        if (joinQueue.exists(player)) {
+            if (status == RoundStatus.Finished || status == RoundStatus.Expired) {
+                //  Calculate round address
+                address roundAddress = getRoundAddress(meta.callId);
+
+                //  Clean garbage
+                delete joinQueue[player];
+
+                //  Add player to the round
+                IRound(roundAddress).join{value: 0, flag: MsgFlag.ALL_NOT_RESERVED, bounce: false}(meta);
+
+                return;
+            }
+        }
+
+        player.transfer({value: 0, flag: MsgFlag.ALL_NOT_RESERVED, bounce: false});
+    }
+
+    function onPlayerJoined(CallMetadata meta) public override {
+        tvm.rawReserve(address(this).balance - msg.value + Gas.TX_STORAGE_FEE, 0);
+
+        address player = meta.returnGasTo;
+        uint64 roundId = meta.callId;
+
+        Utils.requireWithCashback(msg.sender == getRoundAddress(roundId), meta.returnGasTo, BaseErrorCodes.NOT_ALLOWED);
+
+        uint16 result = 0;
+        if (playerRound.exists(player)) {
+            if (playerRound[player] == roundId) {
+                result = BaseErrorCodes.NOTHING_CHANGED;
+                //player.transfer({value: 0, flag: MsgFlag.ALL_NOT_RESERVED, bounce: false});
+                //revert(BaseErrorCodes.NOTHING_CHANGED);
+            } else {
+                uint64 currentRoundId = playerRound[player];
+                if (roundStatuses.exists(currentRoundId)) {
+                    if (
+                        roundStatuses[currentRoundId] != RoundStatus.Finished &&
+                        roundStatuses[currentRoundId] != RoundStatus.Expired
+                    ) {
+/*
+                        playerRound[player] = roundId;
+                        player.transfer({value: 0, flag: MsgFlag.ALL_NOT_RESERVED, bounce: false});
+                        return;
+                    } else {
+*/
+                        //  Player is in some round, but it hasn't finished yet
+/*
+                        player.transfer({value: 0, flag: MsgFlag.ALL_NOT_RESERVED, bounce: false});
+                        revert(BaseErrorCodes.NOT_ALLOWED);
+*/
+                        result = BaseErrorCodes.NOT_ALLOWED;
+                    }
+                }
+            }
+        }
+
+        //  Check that the player is waiting in the join queue
+        if (joinQueue.exists(player)) {
+            //  Check that the player is waiting this specific round to join
+            if (joinQueue[player] != roundId) {
+/*
+                //  Update the information in which round the player is now
+                playerRound[player] = roundId;
+                delete joinQueue[player];
+            } else {
+*/
+                result = BaseErrorCodes.OBSCURE_BEHAVIOR;
+/*
+                //  TODO: Handle the case when joining the round directly
+                player.transfer({value: 0, flag: MsgFlag.ALL_NOT_RESERVED, bounce: false});
+                revert(BaseErrorCodes.OBSCURE_BEHAVIOR);
+*/
+            }
+        }/* else {
+            playerRound[player] = roundId;
+        }*/
+
+        Utils.requireWithCashback(result == 0, player, result);
+
+        playerRound[player] = roundId;
+        if(joinQueue.exists(player)) delete joinQueue[player];
+        player.transfer({value: 0, flag: MsgFlag.ALL_NOT_RESERVED, bounce: false});
+    }
+
+    function onPlayerGiveUp(CallMetadata meta) public override {
+        tvm.rawReserve(address(this).balance - msg.value + Gas.TX_STORAGE_FEE, 0);
+
+        address player = meta.returnGasTo;
+        uint64 roundId = meta.callId;
+
+        //  Check that the sender is a Round contract
+        if (msg.sender == getRoundAddress(roundId)) {
+            //  Check that the player is waiting in the join queue
+            if (playerRound.exists(player)) {
+                //  Check that the player is waiting this specific round to join
+                if (playerRound[player] == roundId) {
+                    //  Update the information in which round the player is now
+                    delete playerRound[player];
+                }
+            }
+        }
+
+        player.transfer({value: 0, flag: MsgFlag.ALL_NOT_RESERVED, bounce: false});
+    }
+
+    function onRoundStatusChange(CallMetadata meta, RoundStatus status) public override {
+        tvm.rawReserve(address(this).balance - msg.value + Gas.TX_STORAGE_FEE, 0);
+
+        uint64 roundId = meta.callId;
+
+        //  Check that the sender is a Round contract
+        if (msg.sender == getRoundAddress(roundId)) {
+            roundStatuses[roundId] = status;
+        }
+
+        meta.returnGasTo.transfer({value: 0, flag: MsgFlag.ALL_NOT_RESERVED, bounce: false});
+    }
+
+    /**
+        Returns the generated board
+
+        @return _board      Board object
+        @return _redBeams   Array of red portal locations
+        @return _blueBeams  Array of blue portal locations
+    */
+    function getBoard()
+    external
+    view
+    responsible
+    override
+    returns (Board _board, uint64[] _redBeams, uint64[] _blueBeams) {
+        return {value: 0, flag: MsgFlag.ALL_NOT_RESERVED, bounce: false} (board, redBeams, blueBeams);
+    }
+
+    function getRounds(optional(RoundStatus) status) external view responsible override returns (uint64[] _rounds) {
+        if (!status.hasValue()) return {value: 0, flag: MsgFlag.REMAINING_GAS, bounce: false} rounds;
+
+        uint64[] result;
+        RoundStatus rs = status.get();
+        for ((uint64 r, RoundStatus s) : roundStatuses) {
+            if (s == rs) result.push(r);
+        }
+
+        return {value: 0, flag: MsgFlag.REMAINING_GAS, bounce: false} result;
+    }
+
+    function _getAddPath(PathType pathType) private returns (uint64 path) {
+        Coordinate head;
+        Coordinate tail;
+
+        uint16 headCell;
+        uint16 tailCell;
+
+        bool flag;
+        while (!flag) {
+            head.x = rnd.next(board.columns) + 1;
+            //traceUint("head.x", head.x, 8, 304, "_getAddPath");
+
+            head.y = rnd.next(board.rows - 1) + 2;
+            //traceUint("head.y", head.y, 8, 308, "_getAddPath");
+
+            //  Head cannot happen on the first row
+            headCell = getCell(head.x, head.y, board.columns);
+            //traceUint("headCell", headCell, 16, 312, "_getAddPath");
+
+            flag = !(head.y == board.rows && head.x == 1) && //  Head cannot be on the final cell
+            !cells.exists(headCell);
+            //  The cell cannot be occupied
+        }
+
+        flag = false;
+        while (!flag) {
+            tail.x = rnd.next(board.columns) + 1;
+            //traceUint("tail.x", tail.x, 8, 322, "_getAddPath");
+
+            tail.y = rnd.next(head.y - 2) + 1;
+            //traceUint("tail.y", tail.y, 8, 324, "_getAddPath");
+
+            //  Tail must be lower than head
+            tailCell = getCell(tail.x, tail.y, board.columns);
+            //traceUint("tailCell", tailCell, 16, 328, "_getAddPath");
+
+            //_getCell(tail.x, tail.y);
+            flag = !cells.exists(tailCell);
+
+            if (pathType == PathType.BlueBeam) {
+                flag = flag && !(tailCell == 1);
+                //  BlueBeam cannot happen on the first cell
+            }
+        }
+
+        uint64 result;
+        if (pathType == PathType.RedBeam) {
+            result = encodePath(
+                headCell,
+                head.x,
+                head.y,
+                tailCell,
+                tail.x,
+                tail.y
+            );
+        } else {
+            result = encodePath(
+                tailCell,
+                tail.x,
+                tail.y,
+                headCell,
+                head.x,
+                head.y
+            );
+        }
+
+        //traceUint("result", result, 64, 341, "_getAddPath");
+
+        cells[headCell] = result;
+        cells[tailCell] = result;
+
+        return result;
+    }
+
+    /*
+        function _checkBoardInitialized() private {
+            if((redBeams.length == redBeamsNumber) && (blueBeams.length == blueBeamsNumber)) {
+                boardInitialized = true;
+                emit BoardGenerated(board, redBeams, blueBeams);
+            }
+        }
+    */
+
+    /**
+        Gets a total of specific round reserves: entrance fees, prize and player jackpot accrual
+
+        @param  roundId         Round identifier
+        @return totalReserves   Sum of all reserves
+    */
+    /*
+        function getRoundReserves(uint64 roundId) public view returns (uint128 totalReserves) {
+            require(rounds.exists(roundId), BaseErrorCodes.ITEM_NOT_FOUND);
+            require(treasury.roundTreasury.exists(roundId), BaseErrorCodes.ITEM_NOT_FOUND);
+
+            RoundTreasury treasury = treasury.roundTreasury[roundId];
+            totalReserves = treasury.entranceFee + treasury.prize;
+            for(( , uint128 pj) : treasury.playerJackpot) {
+                totalReserves += pj;
+            }
+
+            return totalReserves;
+        }
+    */
+
+    /**
+        Gets a total of all reserves per the board, including the jackpot fund, rakes and round reserves
+
+        @return totalReserves   Total reserves
+    */
+    /*
+        function getBoardReserves() public view returns(uint128 totalReserves) {
+            totalReserves = treasury.jackpot + treasury.rakes;
+
+            for((uint64 rid, ) : treasury.roundTreasury) {
+                uint128 roundReserves = getRoundReserves(rid);
+                totalReserves += roundReserves;
+            }
+
+            return totalReserves;
+        }
+    */
+
+
+}

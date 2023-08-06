@@ -1,0 +1,8 @@
+// SPDX-License-Identifier: UNLICENSED
+pragma ever-solidity >= 0.66.0;
+
+import "../../interfaces/common/IGenericStructures.tsol";
+
+abstract contract BoardTreasuryStorage is IGenericStructures {
+    BoardTreasury   treasury;
+}

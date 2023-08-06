@@ -1,0 +1,561 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+pragma ever-solidity >= 0.66.0;
+
+import "./abstracts/board/BoardStorage.tsol";
+//import "./abstracts/board/RoundConfigurationStorage.tsol";
+import "./abstracts/common/Cashback.tsol";
+import "./abstracts/common/Navigation.tsol";
+import "./abstracts/common/Tracing.tsol";
+import "./interfaces/board/IBoard.tsol";
+import "./interfaces/board/IJackpot.tsol";
+import "./interfaces/round/IRound.tsol";
+import "./libraries/ArrayHelper.tsol";
+import "./libraries/Gas.tsol";
+import "./libraries/Utils.tsol";
+import "@broxus/contracts/contracts/libraries/MsgFlag.tsol";
+
+contract Round is IRound, Navigation, Cashback, BoardStorage/*, Tracing*/ {
+    using ArrayHelper for address[];
+
+    uint128 private constant MIN_PLAYERS = 2;                                //  Minimum number of players to attend the game
+
+    //  Basic information
+    uint64      public  id;                 //  From initData
+    address     public  boardAddress;       //  From initData
+
+    //  Game flow statuses
+    RoundStatus public  status = RoundStatus.NotStarted;
+    address     public  winner = address(0);
+
+    //  General settings
+    uint16      public  maxPlayers;
+    bool        public  giveUpAllowed;
+
+    //  Timings
+    uint64              public  validUntil;
+    uint64              public  roundDuration;
+    uint64              public  moveDuration;
+    optional(uint64)    public  autoStartTimestamp;
+
+    //  Treasury settings
+    uint128             public  entranceFee;
+    uint128             public  prizeFund;
+    bool                public  prizeClaimed = false;
+    uint128             public  rake;
+    uint8               public  rakeToJackpotRate;
+    RoundTreasury               treasury;
+
+    //  Round metadata
+    address[]                          roundPlayers;  // List of players in a round
+    Move[] public                      roundMoves;    // Latest round move steps
+    mapping(address => uint16)         playerCell;    // Location of player on current map
+    //mapping(uint8 => uint48)           cells;         // Contains location of portals on map
+    mapping(address => uint128)        remainingEntranceFees;   //  Contains info about entrance fees per player for redeem case
+
+    //  Treasury
+    //BoardTreasury boardTreasury; // Board locked balance
+
+    constructor() public {
+        //  Can be deployed only via platform
+        revert(BaseErrorCodes.NOT_ALLOWED);
+    }
+
+    //  By default, rounds are not upgradeable
+    //  This function call happens only once after deployment via platform
+    function onCodeUpgrade(TvmCell data) private {
+        tvm.resetStorage();
+        tvm.rawReserve(Gas.CONTRACT_MIN_BALANCE, 0);
+
+        TvmSlice dataSlices = data.toSlice();
+        (address _board, , address _sendGasTo, ) = dataSlices.decode(
+            address,    //  Board address
+            uint8,      //  Platform version, unused
+            address,    //  Where to return remainder of gas fees
+            TvmCell     //  Platform code, unused
+        );
+
+        boardAddress = _board;
+
+        TvmCell initData = dataSlices.loadRef();
+        (id) = abi.decode(initData, (uint64));
+
+        TvmCell constructorParams = dataSlices.loadRef();
+
+        (
+            uint    _seed,
+            Board   _boardSize,
+            uint64[] _redBeams,
+            uint64[] _blueBeams,
+            mapping(uint16 => uint64) _cells,
+            uint16  _maxPlayers,
+            bool    _giveUpAllowed,
+            uint64  _roundDuration,
+            uint64  _moveDuration,
+            optional(uint64) _autoStartTimestamp,
+            uint128 _entryStake,
+            uint128 _prizeFund,
+            uint128 _rake,
+            uint8   _rakeToJackpotRate
+        ) = abi.decode(
+            constructorParams,
+            (uint, Board, uint64[], uint64[], mapping(uint16 => uint64), uint16, bool, uint64, uint64, optional(uint64), uint128, uint128, uint128, uint8)
+        );
+
+        seed = _seed;
+        board = _boardSize;
+        redBeams = _redBeams;
+        redBeamsNumber = uint8(_redBeams.length);
+        blueBeams = _blueBeams;
+        blueBeamsNumber = uint8(_blueBeams.length);
+        boardInitialized = true;
+        cells = _cells;
+        maxPlayers = _maxPlayers;
+        giveUpAllowed = _giveUpAllowed;
+        roundDuration = _roundDuration;
+        moveDuration = _moveDuration;
+        if(_autoStartTimestamp.hasValue()) {
+            autoStartTimestamp = Utils._getTimestamp() + _autoStartTimestamp.get();
+        }
+        entranceFee = _entryStake;
+        prizeFund = _prizeFund;
+        treasury.prize = prizeFund;
+        rake = _rake;
+        rakeToJackpotRate = _rakeToJackpotRate;
+
+        _sendGasTo.transfer({value: 0, bounce: false, flag: MsgFlag.ALL_NOT_RESERVED});
+    }
+
+    function getLatestMove() external view responsible override returns (optional(Move) move) {
+        if(roundMoves.length == 0) return {value: 0, flag: MsgFlag.REMAINING_GAS, bounce: false} null;
+        return {value: 0, flag: MsgFlag.REMAINING_GAS, bounce: false} (roundMoves[roundMoves.length - 1]);
+    }
+
+    function join(CallMetadata meta) external override {
+        tvm.rawReserve(address(this).balance - msg.value + Gas.TX_STORAGE_FEE, 0);
+
+        //  Check that the id in metadata corresponds to this round
+        Utils.requireWithCashback(meta.callId == id, meta.returnGasTo, BaseErrorCodes.NOT_ALLOWED);
+
+        //  Only join through the board is supported
+        Utils.requireWithCashback(msg.sender == boardAddress, meta.returnGasTo, BaseErrorCodes.NOT_ALLOWED);
+
+        //  Check that round is not full yet
+        Utils.requireWithCashback(roundPlayers.length < maxPlayers, meta.returnGasTo, BaseErrorCodes.ROUND_FULL);
+
+        address player = meta.returnGasTo;
+
+        //  Check that player hasn't joined already
+        for(address p : roundPlayers) {
+            Utils.requireWithCashback(p != player, player, BaseErrorCodes.ITEM_EXISTS);
+        }
+
+        //  In case there is an entrance fee, try to charge it
+        if(entranceFee > 0) {
+            //  Increase the counter for entry stakes
+            treasury.entranceFee += entranceFee;
+            //  Reserve the amount to check if the value of message is sufficient
+            tvm.rawReserve(entranceFee, 0);
+        }
+
+        //  Initialized player position
+        playerCell[player] = 0;
+        roundPlayers.push(player);
+
+        //  Update round status
+        _updateRoundStatus(player);
+
+        emit RoundJoined(address(this), id, player);
+
+        //  Notify the board that the player has joined the round to update indices
+        IBoard(boardAddress).onPlayerJoined{
+            value: 0,
+            flag: MsgFlag.ALL_NOT_RESERVED,
+            bounce: false
+        }(CallMetadata(id, player));   //  Explicitly replacing the player address in metadata to ensure the right recording
+    }
+
+    /**
+        Rolls a dice and makes a move on generated board
+    */
+    function roll() external override {
+        //tvm.rawReserve(address(this).balance - msg.value + Gas.TX_STORAGE_FEE, 0);  //  Reserve everything except the message value less storage fee and rake value
+
+        address player = msg.sender;
+
+        //  Check if the round is linked to the player
+        require(_inRound(player), BaseErrorCodes.PLAYER_NOT_FOUND_IN_ROUND);
+
+        //  Check if player was put on the board
+        require(playerCell.exists(player), BaseErrorCodes.PLAYER_NOT_FOUND_ON_BOARD);
+
+        //  Refresh the round status
+        _updateRoundStatus(player);
+
+        tvm.rawReserve(Gas.TX_STORAGE_FEE, 4);  //  Reserve the original balance before msg.value plus storage fee
+
+        //  Check that the round is not finished or expired before
+        require(status != RoundStatus.NotStarted, BaseErrorCodes.TOO_EARLY);
+        require(status != RoundStatus.Finished, BaseErrorCodes.FINISHED);
+        require(status != RoundStatus.Expired, BaseErrorCodes.TOO_LATE);
+
+        //  Take rake and jackpot
+        if(rake > 0) {
+            IJackpot(boardAddress).onJackpotAccrued{
+                value: rake + Gas.JACKPOT_ACCRUAL_FEE,
+                bounce: false
+            }(
+                CallMetadata(id, msg.sender),
+                rake,
+                rakeToJackpotRate
+            );
+        }
+
+        //  Contains move metadata and players' steps
+        Move        move;
+
+        //  Empty storage of players' steps to initialize a new move
+        mapping(address => uint64[]) playerSteps;
+
+        //  Steps of current player
+        uint64[]    steps;
+
+        //  Current timestamp
+        uint64      timestamp = Utils._getTimestamp();
+
+        if(roundMoves.length > 0) {
+            //  If any player has moved already in this round
+            //  Take the previously saved move data
+            move = roundMoves[roundMoves.length - 1];
+
+            if(
+                (move.expiresAt < timestamp) ||                   //  If move has expired
+                (move.playerSteps.keys().length == maxPlayers)    //  or all players have moved
+            ) {
+                move = Move(timestamp + moveDuration, playerSteps);
+                roundMoves.push(move);  //  Push a new move to update the storage index
+            }
+        } else {
+            move = Move(timestamp + moveDuration, playerSteps);
+            roundMoves.push(move);      //  Push a new move to update the storage index
+        }
+
+        //  Check that player hasn't moved yet
+        require(!move.playerSteps.exists(player), BaseErrorCodes.ALREADY_MOVED);
+
+        //  Initialize empty steps container
+        move.playerSteps[player] = steps;
+
+        //  Roll the dice
+        rnd.shuffle();
+        uint8 diceVal = rnd.next(6) + 1;
+
+        emit DiceRolled(boardAddress, id, player, diceVal);
+
+        //  Calculate new coordinates
+        uint16  curCell = playerCell[player];   //  Current cell the player stands on
+        (uint8 x, uint8 y) = getXY(curCell, board.columns);
+        uint32  prevLocation = encodeLocation(curCell, x, y);
+
+        uint16  newCell = curCell + diceVal;    //  The first cell the player moves to
+        uint32 newLocation;
+
+        //  If the player is at the end of the board and got more points than needed, return him back by amount of an overflow
+        int16    boardOverflow = int16(newCell) - int16(board.columns) * int16(board.rows);
+
+        //  Current player step
+        uint64  step;
+
+        if(boardOverflow > 0) {             //  The player has come out of the board
+            //  Calculate location of the last cell
+            uint32 lastCellLocation = encodeLocation(
+                board.columns * board.rows,
+                board.columns,
+                board.rows
+            );
+
+            //  Build path to this location
+            step = encodePathByLocations(prevLocation, lastCellLocation);
+
+            //  Player first moves to the last cell to step back later
+            emit PlayerMoved(
+                address(this),
+                id,
+                player,
+                step
+            );
+
+            //  Save the first step
+            move.playerSteps[player].push(step);
+            playerCell[player] = board.rows * board.columns;
+
+            //  Calculate the next cell the player will move to
+            newCell = uint16(int16(board.columns) * int16(board.rows) - boardOverflow);
+
+            (x, y) = getXY(newCell, board.columns);
+
+            //  Recalculate locations
+            newLocation = encodeLocation(newCell, x, y);
+            prevLocation = lastCellLocation;
+
+        } else if (boardOverflow == 0) {    //  The player has got to the final cell
+            //  Player has won
+            status = RoundStatus.Finished;
+            _notifyBoardAboutStatusChange(player);
+
+            winner = player;
+            step = encodePathByLocations(prevLocation, newLocation);
+
+            emit PlayerMoved(
+                address(this),
+                id,
+                player,
+                step
+            );
+
+            move.playerSteps[player].push(step);
+            roundMoves[roundMoves.length - 1] = move;
+            playerCell[player] = newCell;
+
+            emit RoundFinished(address(this), id, player);
+            msg.sender.transfer({value: 0, flag: MsgFlag.ALL_NOT_RESERVED, bounce: false});
+
+            return;
+        } else {
+            //  Regular move
+            (x, y) = getXY(newCell, board.columns);
+            newLocation = encodeLocation(newCell, x, y);
+        }
+
+        step = encodePathByLocations(prevLocation, newLocation);
+
+        emit PlayerMoved(address(this), id, player, step);
+        move.playerSteps[player].push(step);
+        playerCell[player] = newCell;
+
+        //  Check if player stepped on a portal entrance
+        //  Consider only one portal teleportation is possible
+        //  Suppose no portal can end on the last cell
+        if(cells.exists(newCell)) {
+            uint64 path = cells[newCell];
+
+            (
+                ,
+                uint8 fromX,
+                uint8 fromY,
+                uint16 toCell,
+                uint8 toX,
+                uint8 toY
+            ) = decodePath(path);
+
+            if(fromX == x && fromY == y) {
+                prevLocation = newLocation;
+
+                newCell = toCell;
+
+                newLocation = encodeLocation(newCell, toX, toY);
+
+                step = encodePathByLocations(prevLocation, newLocation);
+
+                move.playerSteps[player].push(step);
+                playerCell[player] = newCell;
+
+                emit PlayerMoved(address(this), id, player, step);
+
+                x = toX;
+                y = toY;
+            }
+        }
+
+        roundMoves[roundMoves.length - 1] = move;
+
+        msg.sender.transfer({value: 0, flag: MsgFlag.ALL_NOT_RESERVED, bounce: false});
+    }
+
+    function claim() external override {
+        require(status == RoundStatus.Finished, BaseErrorCodes.WRONG_STATE);
+
+        uint128 totalPrize = treasury.prize + treasury.entranceFee;
+        require(totalPrize > 0, BaseErrorCodes.NOTHING_TO_PAY);
+
+        require(address(this).balance > (totalPrize + Gas.CONTRACT_MIN_BALANCE/* + msg.value*/), BaseErrorCodes.NOT_ENOUGH_BALANCE);
+        require(!prizeClaimed, BaseErrorCodes.FINISHED);
+
+        tvm.rawReserve(Gas.CONTRACT_MIN_BALANCE, 0);
+
+        winner.transfer({value: totalPrize, bounce: false, flag: MsgFlag.SENDER_PAYS_FEES});
+        prizeClaimed = true;
+        emit PrizeClaimed(address(this), id, winner, totalPrize);
+
+        IJackpot(boardAddress).claimJackpot{
+                value: Gas.JACKPOT_CALL_FEE,
+                bounce: false
+            }(CallMetadata(id, winner));
+
+        msg.sender.transfer({value: 0, flag: MsgFlag.REMAINING_GAS, bounce: false});
+    }
+
+    /**
+        Allows player to redeem the entranceFee in case the round has expired
+
+        @param  player  Address of the participating player
+    */
+    function redeem(address player) external override {
+        require(status == RoundStatus.Expired, BaseErrorCodes.WRONG_STATE);
+        require(remainingEntranceFees.exists(player), BaseErrorCodes.NOT_ALLOWED);
+        require(remainingEntranceFees[player] > 0, BaseErrorCodes.NOTHING_TO_PAY);
+
+        player.transfer({value: remainingEntranceFees[player], bounce: false});
+        msg.sender.transfer({value: 0, flag: MsgFlag.REMAINING_GAS, bounce: false});
+    }
+
+    function giveUp() external override {
+        tvm.rawReserve(address(this).balance - msg.value + Gas.TX_STORAGE_FEE, 0);
+        _removePlayerFromRound(msg.sender);
+    }
+
+    function getRoundStatus(CallMetadata meta) external view responsible override returns (uint64 _id, RoundStatus _status, CallMetadata _meta) {
+        return {value: 0, flag: MsgFlag.REMAINING_GAS, bounce: false} (id, status, meta);
+    }
+
+    function updateRoundStatus() external override cashback {
+        tvm.rawReserve(address(this).balance - msg.value + Gas.TX_STORAGE_FEE, 0);
+        _updateRoundStatus(msg.sender);
+    }
+
+    function _updateRoundStatus(address returnGasTo) internal {
+        uint64 timestamp = Utils._getTimestamp();
+
+        //  Check if round has expired
+        if(validUntil > 0 && validUntil <= timestamp) {
+            status = RoundStatus.Expired;
+
+            if(address(this).balance > prizeFund) {
+                //  Redeem back the prize fund to the board contract
+                boardAddress.transfer({value: prizeFund, bounce: false});
+            }
+
+            _notifyBoardAboutStatusChange(returnGasTo);
+
+            tvm.commit();
+            return;
+        }
+
+        //  Check if round is in final status
+        if(status == RoundStatus.Finished || status == RoundStatus.Expired) return;
+
+        //  Check if all players have joined
+        if(status == RoundStatus.NotStarted) {
+            if(roundPlayers.length < MIN_PLAYERS) return;
+
+            if(roundPlayers.length < maxPlayers) {
+                if(autoStartTimestamp.hasValue()) {
+                    if(autoStartTimestamp.get() > Utils._getTimestamp()) {
+                        return;
+                    } else {
+                        status = RoundStatus.Ready;
+                    }
+                }
+            } else {
+                status = RoundStatus.Ready;
+            }
+
+            _notifyBoardAboutStatusChange(returnGasTo);
+
+            tvm.commit();
+            return;
+        }
+
+        //  Set the round validity after the first roll
+        if(status == RoundStatus.Ready) {
+            //  Check that the prize is sufficient
+            if((address(this).balance - msg.value + Gas.TX_STORAGE_FEE) < (treasury.entranceFee + treasury.prize)) return;
+
+            validUntil = roundDuration + Utils._getTimestamp();
+            status = RoundStatus.Active;
+            _notifyBoardAboutStatusChange(returnGasTo);
+
+            tvm.commit();
+            return;
+        }
+
+        if(status == RoundStatus.Active) {
+            uint16 lastCell = uint16(board.columns) * uint16(board.rows);
+            for((, uint16 pCell) : playerCell) {
+                if(pCell == lastCell) {
+                    status = RoundStatus.Finished;
+                    _notifyBoardAboutStatusChange(returnGasTo);
+
+                    tvm.commit();
+                    return;
+                }
+            }
+        }
+    }
+
+    function _inRound(address player) internal view returns (bool) {
+        for(address p : roundPlayers) {
+            if(p == player) return true;
+        }
+
+        return false;
+    }
+
+
+    /**
+        Safely removes the player from a round and resets its environment
+
+        @param  player      Player address
+    */
+    function _removePlayerFromRound(address player) internal {
+        for(uint i = 0; i < roundPlayers.length; i++) {
+            if(roundPlayers[i] == player) {
+                //  Detach position on the board from player
+                if(playerCell.exists(player)) delete playerCell[player];
+
+                //  Remove player from the list of players
+                roundPlayers.del(i);
+
+                if(status == RoundStatus.NotStarted) {
+                    if(address(this).balance > entranceFee && treasury.entranceFee >= entranceFee) {
+                        player.transfer({value: entranceFee, bounce: false});
+                        treasury.entranceFee -= entranceFee;
+                    }
+                } else {
+                    //  In case the only one player is left in the round, they become winner automatically
+                    if(roundPlayers.length == 1) {
+                        winner = roundPlayers[0];
+                        status = RoundStatus.Finished;
+
+                        emit PlayerWon(boardAddress, id, winner, treasury.prize + treasury.entranceFee);
+                    }
+
+                    //  Fix the number of players in the storage
+                    maxPlayers--;
+                }
+
+                //  Void the player's entrance fee
+                if(remainingEntranceFees.exists(player)) delete remainingEntranceFees[player];
+
+                IBoard(boardAddress).onPlayerGiveUp{
+                    value: Gas.NOTIFY_BOARD_FEE,
+                    flag: MsgFlag.REMAINING_GAS,
+                    bounce: false
+                }(CallMetadata(id, player));
+
+                return;
+            }
+        }
+
+        revert(BaseErrorCodes.ITEM_NOT_FOUND);
+    }
+
+    function _notifyBoardAboutStatusChange(address player) internal view {
+        IBoard(boardAddress).onRoundStatusChange{
+                value: Gas.NOTIFY_BOARD_FEE,
+                bounce: false
+            }(
+            CallMetadata(id, player),
+            status
+        );
+    }
+}

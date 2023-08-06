@@ -1,0 +1,32 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+pragma ever-solidity >= 0.66.0;
+
+import "../common/IGenericStructures.tsol";
+
+interface IRound is IGenericStructures {
+    //  Game flow events
+    event RoundStatusUpdated(address indexed board, uint64 indexed roundId, RoundStatus oldStatus, RoundStatus newStatus);
+    event RoundFinished(address board, uint64 roundId, address winner);
+    event DiceRolled(address indexed board, uint64 indexed roundId, address indexed player, uint8 dice);
+
+    //  Player events
+    event RoundJoined(address board, uint64 roundId, address player);
+    event PlayerMoved(address indexed board, uint64 indexed round, address indexed player, uint64 path);
+    event PlayerWon(address board, uint64 round, address player, uint128 amount);
+    event PlayerRemovedFromRound(address board, uint64 roundId, address player);
+
+    //  Financial events
+    event PrizeClaimed(address board, uint64 roundId, address player, uint128 amount);
+
+    //function getRound(uint64 roundId) external view responsible returns (optional(Round) round);
+    function getLatestMove() external view responsible returns (optional(Move) move);
+    function join(CallMetadata meta) external;   //  Only callable from board contract
+    function updateRoundStatus() external;
+    function getRoundStatus(CallMetadata meta) external view responsible returns (uint64 _id, RoundStatus _status, CallMetadata _meta);
+    //function decodePath(uint32 mask) external pure returns (Location from, Location to);
+
+    function roll() external /*responsible returns (uint16 dice, Coordinate newPosition)*/;
+    function claim() external;
+    function redeem(address player) external;
+    function giveUp() external;
+}

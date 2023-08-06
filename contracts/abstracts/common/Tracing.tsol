@@ -1,0 +1,73 @@
+// SPDX-License-Identifier: UNLICENSED
+pragma ever-solidity >= 0.62.0;
+
+abstract contract Tracing {
+    bool public debug = false;
+
+    event UintTraced(
+        string  name,
+        uint    value,
+        uint16  _type,
+        uint    line,
+        string  note
+    );
+
+    event IntTraced(
+        string  name,
+        int     value,
+        uint16  _type,
+        uint    line,
+        string  note
+    );
+
+    event DebugModeChanged(address _contract, bool prevState, bool newState);
+
+    struct TracedUint {
+        string  name;
+        uint    value;
+        uint16  _type;
+        uint    line;
+        string  note;
+    }
+
+    struct TracedInt {
+        string name;
+        int    value;
+        uint16  _type;
+        uint    line;
+        string  note;
+    }
+
+    mapping(uint => TracedUint)   public uintDump;
+    mapping(uint => TracedInt)    public intDump;
+    string[] dumpNames;
+
+    function traceUint(string name, uint value, uint16 _type, uint line, string note) internal {
+        //uintDump[_getAddIndexByName(name)] = TracedUint(name, value, _type, line, note);
+        if (debug) emit UintTraced(name, value, _type, line, note);
+        tvm.commit();
+    }
+
+    function traceInt(string name, int value, uint16 _type, uint line, string note) internal {
+        //intDump[_getAddIndexByName(name)] = TracedInt(name, value, _type, line, note);
+        if (debug) emit IntTraced(name, value, _type, line, note);
+        tvm.commit();
+    }
+
+    function _getAddIndexByName(string name) internal returns (uint) {
+        for(uint i = 0; i < dumpNames.length; i++) {
+            if(dumpNames[i] == name) {
+                return i;
+            }
+        }
+
+        dumpNames.push(name);
+        return dumpNames.length - 1;
+    }
+
+    function setDebugMode(bool status) external {
+        bool old = debug;
+        debug = status;
+        emit DebugModeChanged(address(this), old, debug);
+    }
+}

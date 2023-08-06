@@ -1,11 +1,25 @@
-// SPDX-License-Identifier: UNLICENSED
-pragma ever-solidity >= 0.62.0;
+// SPDX-License-Identifier: AGPL-3.0-or-later
+pragma ever-solidity >= 0.66.0;
 
 import "./BaseErrorCodes.tsol";
 
 library ArrayHelper {
     // Delete value from the `array` at `index` position
     function del(uint[] array, uint index) internal {
+        for (uint i = index; i + 1 < array.length; ++i){
+            array[i] = array[i + 1];
+        }
+        array.pop();
+    }
+
+    function del(uint64[] array, uint64 index) internal {
+        for (uint64 i = index; i + 1 < array.length; ++i){
+            array[i] = array[i + 1];
+        }
+        array.pop();
+    }
+
+    function del(address[] array, uint index) internal {
         for (uint i = index; i + 1 < array.length; ++i){
             array[i] = array[i + 1];
         }
@@ -24,14 +38,14 @@ library ArrayHelper {
         array.pop();
     }
 
-    function quickSort(uint[] arr, uint left, uint right) public returns(uint[]) {
+    function quickSort(uint64[] arr, uint left, uint right) public returns(uint64[]) {
         if(left >= right) return arr;
         if(right >= arr.length) return arr;
 
         uint i = left;
         uint j = right;
 
-        uint pivot = arr[left + (right - left) / 2];
+        uint64 pivot = arr[left + (right - left) / 2];
         while (i <= j) {
             while (arr[i] < pivot && i < arr.length) i++;
             while (pivot < arr[j] && j > 1) j--;
@@ -51,30 +65,14 @@ library ArrayHelper {
         return arr;
     }
 
-    function mapSort(uint[] arr) public returns(uint[]) {
-        mapping(uint => uint32) m;
-        for(uint i : arr) {
-            if(m.exists(i)) { m[i]++; } else { m[i] = 1; }
-        }
-
-        uint[] result;
-        for((uint k, uint v) : m) {
-            for(uint i = 0; i < v; i++) {
-                result.push(k);
-            }
-        }
-
-        return result;
-    }
-
-    function median(uint[] arr) internal returns (uint) {
+    function median(uint64[] arr) internal returns (uint) {
         require(arr.length > 0, BaseErrorCodes.NON_EMPTY_VALUE_REQUIRED);
 
-        uint[] arrSorted = quickSort(arr, 0, arr.length - 1);
+        uint64[] arrSorted = quickSort(arr, 0, arr.length - 1);
 
         if(arrSorted.length % 2 == 0) {
-            uint a = arrSorted[arrSorted.length / 2 - 1];
-            uint b = arrSorted[arrSorted.length / 2];
+            uint64 a = arrSorted[arrSorted.length / 2 - 1];
+            uint64 b = arrSorted[arrSorted.length / 2];
             return (a + b) / 2;
         } else {
             return arrSorted[arrSorted.length / 2];

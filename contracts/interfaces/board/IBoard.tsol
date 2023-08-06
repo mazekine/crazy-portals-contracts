@@ -1,0 +1,20 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+pragma ever-solidity >= 0.66.0;
+
+import "../common/IGenericStructures.tsol";
+
+interface IBoard is IGenericStructures {
+    //  Board configuration events
+    event BoardGenerated(Board board, uint64[] redBeams, uint64[] blueBeams);
+
+    function generateBoard(uint seed, uint8 maxRedBeams, uint8 maxBlueBeams) external;
+    function getBoard() external view responsible returns (Board board, uint64[] redBeams, uint64[] blueBeams);
+
+    //function checkPlayerRound(address player, uint64 roundId) external;
+    function joinRound(uint64 roundId) external;
+
+    function onPlayerJoiningRound(uint64 oldRoundId, RoundStatus status, CallMetadata meta) external;
+    function onPlayerJoined(CallMetadata meta) external;
+    function onPlayerGiveUp(CallMetadata meta) external;
+    function onRoundStatusChange(CallMetadata meta, RoundStatus status) external;
+}
