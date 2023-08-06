@@ -2,6 +2,8 @@
 
 ![Crazy Portals logo](img/cp_logo.svg)
 
+![T-Sol compiler version](https://img.shields.io/badge/t--sol-v0.66.0-blue?style=plastic&link=https%3A%2F%2Fbroxus.gitbook.io%2Ft-sol-compiler)
+
 Introducing Crazy Portals: a thrilling and strategic blockchain-based game inspired by the classic Snakes and Ladders. With its unique gameplay mechanics and countless configurations, players are immersed in a world of portals, rewards, and strategy as they compete to reach the final cell first.
 
 ## Gameplay Mechanics
