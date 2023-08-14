@@ -1,0 +1,53 @@
+// SPDX-License-Identifier: UNLICENSED
+pragma ever-solidity >= 0.62.0;
+
+import "../../interfaces/account/IWithSessionKeys.tsol";
+import "../../libraries/BaseErrorCodes.tsol";
+import "../../libraries/Utils.tsol";
+import "../common/Cashback.tsol";
+import "../common/Ownable.tsol";
+
+abstract contract WithSessionKeys is IWithSessionKeys, Ownable, Cashback {
+    mapping(uint256 => uint64) sessionKeys;
+
+    function addSessionKeys(uint256[] keyHashes, uint64 expiresAt) external override onlyOwner reservable cashback {
+        require(expiresAt > Utils._getTimestamp(), BaseErrorCodes.TOO_EARLY);
+
+        for(uint256 kh : keyHashes) {
+            _tryAddSessionKey(kh, expiresAt);
+        }
+
+        emit MultipleSessionKeysAdded(keyHashes, expiresAt);
+    }
+
+    function addSessionKey(uint256 keyHash, uint64 expiresAt) external override onlyOwner reservable cashback {
+        require(expiresAt > Utils._getTimestamp(), BaseErrorCodes.TOO_EARLY);
+        _tryAddSessionKey(keyHash, expiresAt);
+        emit SessionKeyAdded(keyHash, expiresAt);
+    }
+
+    function _tryAddSessionKey(uint256 keyHash, uint64 expiresAt) internal {
+        require(!sessionKeys.exists(keyHash), BaseErrorCodes.ITEM_EXISTS);
+        sessionKeys[keyHash] = expiresAt;
+    }
+
+    function deleteSessionKey(uint256 keyHash) external override onlyOwner reservable cashback {
+        require(sessionKeys.exists(keyHash), BaseErrorCodes.ITEM_NOT_FOUND);
+        delete sessionKeys[keyHash];
+        emit SessionKeyDeleted(keyHash);
+    }
+
+    modifier withRoundSessionKey(uint64 roundId, string key) {
+        TvmBuilder builder;
+        builder.store(roundId);
+        builder.store(key);
+
+        uint256 keyHash = tvm.hash(builder.toCell());
+
+        require(sessionKeys.exists(keyHash), BaseErrorCodes.NOT_ALLOWED);
+        require(sessionKeys[keyHash] > Utils._getTimestamp(), BaseErrorCodes.TOO_LATE);
+
+        _;
+    }
+
+}

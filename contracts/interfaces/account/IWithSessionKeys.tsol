@@ -1,0 +1,13 @@
+// SPDX-License-Identifier: UNLICENSED
+pragma ever-solidity >= 0.62.0;
+
+interface IWithSessionKeys {
+    event SessionKeyAdded(uint256 keyHash, uint64 expiresAt);
+    event MultipleSessionKeysAdded(uint256[] keyHash, uint64 expiresAt);
+    event SessionKeyUsed(uint256 keyHash);
+    event SessionKeyDeleted(uint256 keyHash);
+
+    function addSessionKeys(uint256[] keyHashes, uint64 expiresAt) external;
+    function addSessionKey(uint256 keyHash, uint64 expiresAt) external;
+    function deleteSessionKey(uint256 keyHash) external;
+}
